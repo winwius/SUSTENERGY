@@ -1,4 +1,5 @@
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, WidthType, BorderStyle, HeadingLevel, AlignmentType } from "docx";
+
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, WidthType, BorderStyle, HeadingLevel, AlignmentType, Header, Footer, PageNumber, PageBreak } from "docx";
 import { saveAs } from "file-saver";
 
 export const generateDocx = async (data) => {
@@ -13,7 +14,8 @@ export const generateDocx = async (data) => {
         snapshots,
         powerParameters,
         connectedLoad,
-        conclusions
+        conclusions,
+        logo // Extract logo
     } = data;
 
     // Helper to create table cells
@@ -24,30 +26,130 @@ export const generateDocx = async (data) => {
         });
     };
 
-    // 1. Header Section
-    const headerSection = [
-        new Paragraph({
-            text: "ELECTRICAL SAFETY AUDIT REPORT",
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 300 },
-        }),
-        new Paragraph({
-            children: [
-                new TextRun({ text: "BRANCH: ", bold: true }),
-                new TextRun(branchName),
-            ],
-        }),
-        new Paragraph({
-            children: [
-                new TextRun({ text: "BRANCH CODE: ", bold: true }),
-                new TextRun(branchCode),
-            ],
-            spacing: { after: 300 },
-        }),
-    ];
+    // Process Client Logo
+    let logoImageRun = new TextRun("");
+    if (logo) {
+        try {
+            const response = await fetch(logo);
+            const blob = await response.blob();
+            const buffer = await blob.arrayBuffer();
+            logoImageRun = new ImageRun({
+                data: new Uint8Array(buffer),
+                transformation: { width: 100, height: 100 },
+            });
+        } catch (e) {
+            console.error("Error processing client logo", e);
+        }
+    }
 
-    // 2. Audit Details
+    // Process Sustenergy Logo from public folder
+    let sustenergyLogoRun = new TextRun("");
+    try {
+        const response = await fetch(window.location.origin + "/sustenergy_logo.png");
+        const blob = await response.blob();
+        const buffer = await blob.arrayBuffer();
+        sustenergyLogoRun = new ImageRun({
+            data: new Uint8Array(buffer),
+            transformation: { width: 100, height: 80 },
+        });
+    } catch (e) {
+        console.error("Error processing sustenergy logo", e);
+    }
+
+    // --- Header Construction ---
+
+    // 1. Logos Row (Shared)
+    const logosRow = new TableRow({
+        children: [
+            new TableCell({
+                children: [new Paragraph({ children: [logoImageRun], alignment: AlignmentType.LEFT })],
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                verticalAlign: "center",
+            }),
+            new TableCell({
+                children: [new Paragraph({ children: [sustenergyLogoRun], alignment: AlignmentType.RIGHT })],
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                verticalAlign: "center",
+            }),
+        ],
+    });
+
+    // 2. Title & Details Row (First Page Only)
+    const titleRow = new TableRow({
+        children: [
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        text: "ELECTRICAL SAFETY AUDIT REPORT",
+                        heading: HeadingLevel.HEADING_1,
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 100, after: 100 },
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "BRANCH: ", bold: true }),
+                            new TextRun(branchName || "-"),
+                        ],
+                        alignment: AlignmentType.CENTER,
+                    }),
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "BRANCH CODE: ", bold: true }),
+                            new TextRun(branchCode || "-"),
+                        ],
+                        alignment: AlignmentType.CENTER,
+                    }),
+                ],
+                columnSpan: 2,
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                verticalAlign: "center",
+            }),
+        ],
+    });
+
+    // Helper to create the boxed table structure
+    const createBoxedHeader = (rows) => {
+        const contentTable = new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            },
+            rows: rows,
+        });
+
+        return new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+                left: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+                right: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+                insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            },
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            children: [contentTable],
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            margins: { top: 200, bottom: 200, left: 200, right: 200 },
+                        }),
+                    ],
+                }),
+            ],
+        });
+    };
+
+    const firstPageTable = createBoxedHeader([logosRow, titleRow]);
+    const defaultPageTable = createBoxedHeader([logosRow]);
+
+    // 2. Audit Details (Rest of the body)
     const auditDetails = [
         new Paragraph({
             text: "Electrical Audit Report",
@@ -246,14 +348,136 @@ export const generateDocx = async (data) => {
         new Paragraph({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden" }),
     ];
 
+    // --- TOC Page Construction ---
+    const tocTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        columnWidths: [1000, 5000, 2000, 2000],
+        rows: [
+            // Header Row
+            new TableRow({
+                children: [
+                    new TableCell({ children: [new Paragraph({ text: "Sl. No", bold: true, alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: "Description", bold: true, alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: "Page start", bold: true, alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: "Page end", bold: true, alignment: AlignmentType.CENTER })] }),
+                ],
+            }),
+            // Row 1: Audit report
+            new TableRow({
+                children: [
+                    new TableCell({ children: [new Paragraph({ text: "1", alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph("Audit report")] }),
+                    new TableCell({ children: [new Paragraph({ text: "3", alignment: AlignmentType.CENTER })] }), // Starts after Cover + TOC
+                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }), // Dynamic end unknown
+                ],
+            }),
+            // Row 2: Annexure#1
+            new TableRow({
+                children: [
+                    new TableCell({ children: [new Paragraph({ text: "2", alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph("Annexure#1 Checklist")] }),
+                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }),
+                ],
+            }),
+            // Row 3: Annexure#2
+            new TableRow({
+                children: [
+                    new TableCell({ children: [new Paragraph({ text: "3", alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph("Annexure#2 Thermal Imaging Report")] }),
+                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }),
+                ],
+            }),
+        ],
+    });
+
+    const tocSection = [
+        new Paragraph({
+            text: "Table of contents",
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 200, after: 400 },
+        }),
+        tocTable,
+    ];
+
     console.log("Generating document with data:", data);
 
     try {
         const doc = new Document({
             sections: [{
-                properties: {},
+                properties: {
+                    titlePage: true, // IMPORTANT: Enables distinct first page header
+                    page: {
+                        margin: {
+                            top: "2.5cm",
+                            bottom: "2.5cm",
+                            left: "2.5cm",
+                            right: "2.5cm",
+                        },
+                    },
+                },
+                headers: {
+                    first: new Header({
+                        children: [firstPageTable],
+                    }),
+                    default: new Header({
+                        children: [defaultPageTable],
+                    }),
+                },
+                footers: {
+                    default: new Footer({
+                        children: [
+                            new Table({
+                                width: { size: 100, type: WidthType.PERCENTAGE },
+                                borders: {
+                                    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                },
+                                rows: [
+                                    new TableRow({
+                                        children: [
+                                            new TableCell({
+                                                children: [new Paragraph("Electrical Audit Report")],
+                                                verticalAlign: "center",
+                                                width: { size: 50, type: WidthType.PERCENTAGE },
+                                            }),
+                                            new TableCell({
+                                                children: [
+                                                    new Paragraph({
+                                                        alignment: AlignmentType.RIGHT,
+                                                        children: [
+                                                            new TextRun({
+                                                                children: [PageNumber.CURRENT],
+                                                            }),
+                                                        ],
+                                                    }),
+                                                ],
+                                                verticalAlign: "center",
+                                                width: { size: 50, type: WidthType.PERCENTAGE },
+                                            }),
+                                        ],
+                                    }),
+                                ],
+                            })
+                        ],
+                    }),
+                },
                 children: [
-                    ...headerSection,
+                    // Page 1 Content (Empty, header covers it)
+                    new Paragraph({ text: "", spacing: { after: 0 } }),
+                    new PageBreak(),
+
+                    // Page 2: Table of Contents
+                    ...tocSection,
+                    new PageBreak(),
+
+                    // Page 3+: Main Content
                     ...auditDetails,
                     ...obsSection,
                     ...snapshotSection,
@@ -269,7 +493,7 @@ export const generateDocx = async (data) => {
         const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 
         const safeBranchName = (branchName || "Draft").replace(/[^a-z0-9\s-_]/gi, '').trim().replace(/\s+/g, '_');
-        const fileName = `Audit_Report_${safeBranchName}.docx`;
+        const fileName = "Audit_Report_" + safeBranchName + ".docx";
 
         console.log("Saving file:", fileName);
         saveAs(blob, fileName);

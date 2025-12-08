@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 :root {
   --background: #f0f2f5;
   --foreground: #333333;
@@ -17,13 +21,26 @@
   --theme-teal-light: #f0fdfa;
 }
 
+html {
+  background: var(--background);
+  min-height: 100%;
+}
+
 body {
   color: var(--foreground);
-  background: var(--background);
+  background: white;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
+
+  /* Layout: 5% side margins, centering the content with a frame */
+  margin: 5vh 5vw;
+  min-height: 90vh;
+  padding: 2rem;
+
+  /* Boundary Frame Styles */
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
 /* Colorful Card System */
@@ -222,4 +239,51 @@ th {
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
+}
+
+/* File Input Restyling */
+.file-input {
+  display: block;
+  width: 100%;
+  font-size: 0.875rem;
+  /* text-sm */
+  color: #64748b;
+  /* text-slate-500 */
+}
+
+.file-input::file-selector-button {
+  margin-right: 1rem;
+  /* mr-4 */
+  padding: 0.5rem 1rem;
+  /* py-2 px-4 */
+  border-radius: 9999px;
+  /* rounded-full */
+  border: 0;
+  font-size: 0.875rem;
+  /* text-sm */
+  font-weight: 600;
+  /* font-semibold */
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Theme variants for file inputs */
+.theme-blue .file-input::file-selector-button {
+  background-color: var(--theme-blue-light);
+  color: var(--theme-blue);
+}
+
+.theme-blue .file-input:hover::file-selector-button {
+  background-color: #dbeafe;
+  /* lighter blue for hover */
+}
+
+.theme-purple .file-input::file-selector-button {
+  background-color: var(--theme-purple-light);
+  color: var(--theme-purple);
+}
+
+.theme-purple .file-input:hover::file-selector-button {
+  background-color: #ede9fe;
+  /* lighter purple for hover */
 }

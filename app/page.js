@@ -24,6 +24,7 @@ export default function Home() {
         },
         connectedLoad: [],
         conclusions: [""],
+        logo: null,
     });
 
     const handleInputChange = (e, section, field, subField) => {
@@ -72,6 +73,10 @@ export default function Home() {
     const handleImageUpload = (e, index) => {
         const file = e.target.files[0];
         if (file) {
+            if (file.size > 20 * 1024 * 1024) { // 20 MB Check
+                alert("File size exceeds 20MB limit.");
+                return;
+            }
             const reader = new FileReader();
             reader.onloadend = () => {
                 setFormData((prev) => {
@@ -90,6 +95,22 @@ export default function Home() {
             newSnapshots[index].description = value;
             return { ...prev, snapshots: newSnapshots };
         });
+    };
+
+    // Logo Upload
+    const handleLogoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 20 * 1024 * 1024) { // 20 MB Check
+                alert("File size exceeds 20MB limit.");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData((prev) => ({ ...prev, logo: reader.result }));
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     // Connected Load
@@ -163,6 +184,25 @@ export default function Home() {
                         <h2 className="text-xl">General Information</h2>
                     </div>
                     <div className="card-body">
+                        <div className="mb-6 flex flex-col items-center gap-4">
+                            {formData.logo && (
+                                <div className="w-40 h-32 bg-white rounded-lg border border-slate-200 flex items-center justify-center p-2">
+                                    <img src={formData.logo} alt="Logo" className="max-w-full max-h-full object-contain" />
+                                </div>
+                            )}
+                            <div className="flex flex-col items-center gap-2">
+                                <label className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                                    <Camera size={20} />
+                                    Upload Client Logo
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="file-input"
+                                    onChange={handleLogoUpload}
+                                />
+                            </div>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-slate-600">Branch Name</label>
@@ -222,8 +262,8 @@ export default function Home() {
                     <div className="card-body space-y-6">
                         {formData.snapshots.map((snap, index) => (
                             <div key={index} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row gap-6 items-start">
-                                <div className="w-full md:w-1/3 shrink-0">
-                                    <div className="relative aspect-video bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center group shadow-sm">
+                                <div className="w-full md:w-1/3 shrink-0 flex flex-col gap-3">
+                                    <div className="relative aspect-video bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center shadow-sm">
                                         {snap.image ? (
                                             <img src={snap.image} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
@@ -232,10 +272,15 @@ export default function Home() {
                                                 <span className="text-slate-400 text-sm">No Image</span>
                                             </div>
                                         )}
-                                        <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
-                                            <span className="text-white font-medium px-4 py-2 bg-white/20 backdrop-blur rounded-full">Upload Image</span>
-                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, index)} />
-                                        </label>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-semibold text-slate-600">Upload Image</label>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="file-input"
+                                            onChange={(e) => handleImageUpload(e, index)}
+                                        />
                                     </div>
                                 </div>
                                 <div className="flex-1 w-full flex flex-col gap-2">
@@ -253,8 +298,17 @@ export default function Home() {
                             </div>
                         ))}
                         {formData.snapshots.length === 0 && (
-                            <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                                <p className="text-slate-500">No snapshots added yet. Click "Add Photo" to start.</p>
+                            <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300 cursor-pointer hover:bg-slate-100 transition-colors" onClick={addSnapshot}>
+                                <Camera className="mx-auto text-slate-300 mb-2" size={48} />
+                                <p className="text-slate-500 font-medium">No snapshots added yet</p>
+                                <p className="text-blue-500 text-sm mt-1">Click "Add Photo" Button to add an image</p>
+                            </div>
+                        )}
+                        {formData.snapshots.length > 0 && (
+                            <div className="flex justify-center pt-4">
+                                <button onClick={addSnapshot} className="btn-add flex items-center gap-2 w-full md:w-auto justify-center">
+                                    <Plus size={16} /> Add Another Photo
+                                </button>
                             </div>
                         )}
                     </div>
@@ -351,9 +405,11 @@ export default function Home() {
                             <Zap size={24} />
                             <h2 className="text-xl">Connected Load</h2>
                         </div>
-                        <button onClick={addLoad} className="btn-add flex items-center gap-2">
-                            <Plus size={16} /> Add Load
-                        </button>
+                        {formData.connectedLoad.length === 0 && (
+                            <button onClick={addLoad} className="btn-add flex items-center gap-2">
+                                <Plus size={16} /> Add Load
+                            </button>
+                        )}
                     </div>
                     <div className="card-body overflow-x-auto">
                         <table className="w-full min-w-[600px]">
@@ -391,6 +447,13 @@ export default function Home() {
                                 </tr>
                             </tfoot>
                         </table>
+                        {formData.connectedLoad.length > 0 && (
+                            <div className="flex justify-center pt-4">
+                                <button onClick={addLoad} className="btn-add flex items-center gap-2 w-full md:w-auto justify-center">
+                                    <Plus size={16} /> Add Another Load
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -401,9 +464,11 @@ export default function Home() {
                             <CheckCircle size={24} />
                             <h2 className="text-xl">Conclusions</h2>
                         </div>
-                        <button onClick={addConclusion} className="btn-add flex items-center gap-2">
-                            <Plus size={16} /> Add Point
-                        </button>
+                        {formData.conclusions.length === 0 && (
+                            <button onClick={addConclusion} className="btn-add flex items-center gap-2">
+                                <Plus size={16} /> Add Point
+                            </button>
+                        )}
                     </div>
                     <div className="card-body space-y-4">
                         {formData.conclusions.map((conc, index) => (
@@ -420,6 +485,13 @@ export default function Home() {
                                 </button>
                             </div>
                         ))}
+                        {formData.conclusions.length > 0 && (
+                            <div className="flex justify-center pt-4">
+                                <button onClick={addConclusion} className="btn-add flex items-center gap-2 w-full md:w-auto justify-center">
+                                    <Plus size={16} /> Add Another Point
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -433,7 +505,7 @@ export default function Home() {
                         Generate Report
                     </button>
                 </div>
-            </div>
-        </main>
+            </div >
+        </main >
     );
 }
