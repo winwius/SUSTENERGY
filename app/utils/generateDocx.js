@@ -1,5 +1,5 @@
 
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, WidthType, BorderStyle, HeadingLevel, AlignmentType, Header, Footer, PageNumber, PageBreak } from "docx";
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, WidthType, BorderStyle, HeadingLevel, AlignmentType, Header, Footer, PageNumber, PageBreak, SimpleField, BookmarkStart, BookmarkEnd, ShadingType, TableLayoutType } from "docx";
 import { saveAs } from "file-saver";
 
 export const generateDocx = async (data) => {
@@ -15,7 +15,8 @@ export const generateDocx = async (data) => {
         powerParameters,
         connectedLoad,
         conclusions,
-        logo // Extract logo
+        logo,
+        signature // Extract signature
     } = data;
 
     // Helper to create table cells
@@ -54,6 +55,29 @@ export const generateDocx = async (data) => {
         });
     } catch (e) {
         console.error("Error processing sustenergy logo", e);
+    }
+
+    // Process Signature
+    let signatureRun = new Paragraph({ text: "", spacing: { before: 800 } }); // Default Spacer
+    if (signature) {
+        try {
+            const response = await fetch(signature);
+            const blob = await response.blob();
+            const buffer = await blob.arrayBuffer();
+            signatureRun = new Paragraph({
+                children: [
+                    new ImageRun({
+                        data: new Uint8Array(buffer),
+                        transformation: { width: 150, height: 60 },
+                    }),
+                ],
+                spacing: { before: 400, after: 400 },
+            });
+        } catch (e) {
+            console.error("Error processing signature", e);
+        }
+    } else {
+        signatureRun = new Paragraph({ text: "", spacing: { before: 800 } }); // Keep space if no signature
     }
 
     // --- Header Construction ---
@@ -149,41 +173,65 @@ export const generateDocx = async (data) => {
     const firstPageTable = createBoxedHeader([logosRow, titleRow]);
     const defaultPageTable = createBoxedHeader([logosRow]);
 
-    // 2. Audit Details (Rest of the body)
-    const auditDetails = [
-        new Paragraph({
-            text: "Electrical Audit Report",
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 400, after: 200 },
-        }),
-        new Paragraph({
+    // --- Audit Details Section ---
+
+    // Title outside the table
+    const auditReportTitle = new Paragraph({
+        text: "Electrical Audit Report",
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.LEFT,
+        spacing: { before: 400, after: 200 },
+    });
+
+    // 2-Column Details Table with Shading
+    const detailsRow = (label, value, shade = false) => {
+        const shadeConfig = shade ? { fill: "D9E2F3", type: ShadingType.CLEAR, color: "auto" } : undefined;
+        return new TableRow({
             children: [
-                new TextRun({ text: "Reference no: ", bold: true }),
-                new TextRun(refNo),
-                new TextRun({ text: "\tDated: ", bold: true }),
-                new TextRun(date),
+                new TableCell({
+                    children: [new Paragraph({ children: [new TextRun({ text: label, bold: true })] })],
+                    shading: shadeConfig,
+                    width: { size: 3000, type: WidthType.DXA }, // Fixed 3000 DXA (~5.3cm)
+                }),
+                new TableCell({
+                    children: [new Paragraph({ children: [new TextRun({ text: value || "-" })] })],
+                    shading: shadeConfig,
+                    width: { size: 6000, type: WidthType.DXA }, // Fixed 6000 DXA (~10.6cm)
+                }),
             ],
-            tabStops: [{ type: "right", position: 9000 }],
-        }),
-        new Paragraph({
-            children: [
-                new TextRun({ text: "Inspection date: ", bold: true }),
-                new TextRun(inspectionDate),
-            ],
-        }),
-        new Paragraph({
-            children: [
-                new TextRun({ text: "Client: ", bold: true }),
-                new TextRun(client),
-            ],
-            spacing: { after: 300 },
-        }),
-    ];
+        });
+    };
+
+    const auditDetailsTable = new Table({
+        layout: TableLayoutType.FIXED,
+        width: { size: 9000, type: WidthType.DXA },
+        columnWidths: [3000, 6000], // CRITICAL: Defines the grid columns
+        borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
+            left: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
+            right: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
+            insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
+        },
+        rows: [
+            detailsRow("Reference no", refNo, true),
+            detailsRow("Dated", date, false),
+            detailsRow("Inspection date", inspectionDate, true),
+            detailsRow("Client", client, false),
+        ],
+    });
+
+    // --- Content Sections with Bookmarks ---
 
     // 3. General Observations
     const obsSection = [
         new Paragraph({
-            text: "1.0 Audit - General observations",
+            children: [
+                new BookmarkStart("bookmark_obs"),
+                new TextRun("1.0 Audit - General observations"),
+                new BookmarkEnd("bookmark_obs"),
+            ],
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 400, after: 200 },
         }),
@@ -228,7 +276,7 @@ export const generateDocx = async (data) => {
 
     const snapshotTable = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        columnWidths: [1000, 5000, 3000], // Explicit widths for 3 columns
+        columnWidths: [1000, 5000, 3000],
         rows: [
             new TableRow({
                 children: [
@@ -243,7 +291,11 @@ export const generateDocx = async (data) => {
 
     const snapshotSection = [
         new Paragraph({
-            text: "2.0 Snapshots of Electrical Installation",
+            children: [
+                new BookmarkStart("bookmark_snap"),
+                new TextRun("2.0 Snapshots of Electrical Installation"),
+                new BookmarkEnd("bookmark_snap"),
+            ],
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 400, after: 200 },
         }),
@@ -254,7 +306,7 @@ export const generateDocx = async (data) => {
     const pp = powerParameters;
     const powerTable = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        columnWidths: [2500, 1500, 2500, 2500], // Explicit widths for 4 columns
+        columnWidths: [2500, 1500, 2500, 2500],
         rows: [
             new TableRow({ children: [createCell("Parameter", true), createCell("Test Point", true), createCell("Value", true), createCell("Remarks", true)] }),
             // Line Voltage
@@ -280,7 +332,11 @@ export const generateDocx = async (data) => {
 
     const powerSection = [
         new Paragraph({
-            text: "3.0 Power Parameters",
+            children: [
+                new BookmarkStart("bookmark_power"),
+                new TextRun("3.0 Power Parameters"),
+                new BookmarkEnd("bookmark_power"),
+            ],
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 400, after: 200 },
         }),
@@ -304,7 +360,7 @@ export const generateDocx = async (data) => {
 
     const loadTable = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        columnWidths: [1000, 4000, 1500, 1500, 1500], // Explicit widths for 5 columns
+        columnWidths: [1000, 4000, 1500, 1500, 1500],
         rows: [
             new TableRow({ children: [createCell("Sl. No", true), createCell("Type of Load", true), createCell("Power (W)", true), createCell("Quantity (Nos)", true), createCell("Sub Total (KW)", true)] }),
             ...loadRows,
@@ -314,7 +370,11 @@ export const generateDocx = async (data) => {
 
     const loadSection = [
         new Paragraph({
-            text: "4.0 Connected Load Detail",
+            children: [
+                new BookmarkStart("bookmark_load"),
+                new TextRun("4.0 Connected Load Detail"),
+                new BookmarkEnd("bookmark_load"),
+            ],
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 400, after: 200 },
         }),
@@ -329,7 +389,11 @@ export const generateDocx = async (data) => {
 
     const conclusionSection = [
         new Paragraph({
-            text: "5.0 Conclusions",
+            children: [
+                new BookmarkStart("bookmark_conc"),
+                new TextRun("5.0 Conclusions"),
+                new BookmarkEnd("bookmark_conc"),
+            ],
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 400, after: 200 },
         }),
@@ -340,7 +404,7 @@ export const generateDocx = async (data) => {
     const footerSection = [
         new Paragraph({ text: "", spacing: { before: 800 } }),
         new Paragraph({ text: "For Sustenergy Foundation", bold: true }),
-        new Paragraph({ text: "", spacing: { before: 800 } }),
+        signatureRun,
         new Paragraph({ text: "Jayakumar.R", bold: true }),
         new Paragraph({ text: "Principal Consultant." }),
         new Paragraph({ text: "Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India" }),
@@ -348,64 +412,71 @@ export const generateDocx = async (data) => {
         new Paragraph({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden" }),
     ];
 
-    // --- TOC Page Construction ---
+    // --- TOC Page Construction (Manual Boxed) ---
+    const tocRows = [
+        { sl: "1", desc: "1.0 Audit - General observations", link: "bookmark_obs" },
+        { sl: "2", desc: "2.0 Snapshots of Electrical Installation", link: "bookmark_snap" },
+        { sl: "3", desc: "3.0 Power Parameters", link: "bookmark_power" },
+        { sl: "4", desc: "4.0 Connected Load Detail", link: "bookmark_load" },
+        { sl: "5", desc: "5.0 Conclusions", link: "bookmark_conc" },
+    ];
+
     const tocTable = new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        columnWidths: [1000, 5000, 2000, 2000],
+        columnWidths: [1000, 6000, 2000],
         rows: [
-            // Header Row
+            // Header
             new TableRow({
                 children: [
-                    new TableCell({ children: [new Paragraph({ text: "Sl. No", bold: true, alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph({ text: "Description", bold: true, alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph({ text: "Page start", bold: true, alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph({ text: "Page end", bold: true, alignment: AlignmentType.CENTER })] }),
+                    createCell("Sl. No", true),
+                    createCell("Description", true),
+                    createCell("Page No", true),
                 ],
             }),
-            // Row 1: Audit report
-            new TableRow({
+            // Links
+            ...tocRows.map(item => new TableRow({
                 children: [
-                    new TableCell({ children: [new Paragraph({ text: "1", alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph("Audit report")] }),
-                    new TableCell({ children: [new Paragraph({ text: "3", alignment: AlignmentType.CENTER })] }), // Starts after Cover + TOC
-                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }), // Dynamic end unknown
+                    new TableCell({ children: [new Paragraph({ text: item.sl, alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph(item.desc)] }),
+                    new TableCell({
+                        children: [
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        children: [
+                                            new SimpleField(`PAGEREF ${item.link} \\h`),
+                                        ],
+                                    }),
+                                ],
+                                alignment: AlignmentType.CENTER,
+                            })
+                        ],
+                    }),
                 ],
-            }),
-            // Row 2: Annexure#1
-            new TableRow({
-                children: [
-                    new TableCell({ children: [new Paragraph({ text: "2", alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph("Annexure#1 Checklist")] }),
-                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }),
-                ],
-            }),
-            // Row 3: Annexure#2
-            new TableRow({
-                children: [
-                    new TableCell({ children: [new Paragraph({ text: "3", alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph("Annexure#2 Thermal Imaging Report")] }),
-                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })] }),
-                ],
-            }),
+            }))
         ],
     });
 
     const tocSection = [
         new Paragraph({
-            text: "Table of contents",
+            text: "Table of Contents",
             heading: HeadingLevel.HEADING_1,
             alignment: AlignmentType.CENTER,
-            spacing: { before: 200, after: 400 },
+            spacing: { before: 400, after: 400 },
+            pageBreakBefore: false,
+            color: "2F5496" // Blue color for TOC Title
         }),
         tocTable,
+        new Paragraph({ text: "", pageBreakBefore: true }), // Break AFTER TOC to start content
     ];
 
     console.log("Generating document with data:", data);
 
     try {
         const doc = new Document({
+            features: {
+                updateFields: true,
+            },
             sections: [{
                 properties: {
                     titlePage: true, // IMPORTANT: Enables distinct first page header
@@ -473,12 +544,15 @@ export const generateDocx = async (data) => {
                     new Paragraph({ text: "", spacing: { after: 0 } }),
                     new PageBreak(),
 
-                    // Page 2: Table of Contents
+                    // Page 2: Audit Details + TOC
+                    auditReportTitle,
+                    auditDetailsTable,
+                    new Paragraph({ text: "", spacing: { after: 200 } }), // Gap
                     ...tocSection,
-                    new PageBreak(),
+                    // Note: tocSection now ends with a PageBreak
 
                     // Page 3+: Main Content
-                    ...auditDetails,
+                    // Note: auditDetails was removed from here, as it's now on Page 2
                     ...obsSection,
                     ...snapshotSection,
                     ...powerSection,
@@ -503,3 +577,4 @@ export const generateDocx = async (data) => {
         alert("Error generating document. Please check console for details.");
     }
 };
+

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Download, Camera, FileText, Zap, Activity, CheckCircle } from "lucide-react";
+import { Plus, Trash2, Download, Camera, FileText, Zap, Activity, CheckCircle, PenTool, Upload, X } from "lucide-react";
 import { generateDocx } from "./utils/generateDocx";
 
 export default function Home() {
@@ -24,6 +24,8 @@ export default function Home() {
         },
         connectedLoad: [],
         conclusions: [""],
+        signature: null,
+
         logo: null,
     });
 
@@ -492,6 +494,54 @@ export default function Home() {
                                 </button>
                             </div>
                         )}
+                    </div>
+                </section>
+
+                {/* 7. Signature Upload - New Section */}
+                <section className="colorful-card theme-blue">
+                    <div className="card-header">
+                        <div className="flex items-center gap-2">
+                            <PenTool size={24} />
+                            <h2 className="text-xl">Signature</h2>
+                        </div>
+                    </div>
+                    <div className="card-body">
+                        <div className="flex items-center gap-4">
+                            {formData.signature ? (
+                                <div className="relative w-48 h-24 border rounded overflow-hidden">
+                                    <img src={formData.signature} alt="Signature" className="w-full h-full object-contain" />
+                                    <button
+                                        onClick={() => setFormData({ ...formData, signature: null })}
+                                        className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full m-1"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="w-48 h-24 border-2 border-dashed border-slate-300 rounded flex items-center justify-center text-slate-400">
+                                    No Signature
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-1 justify-center">
+                                <label className="text-xs font-semibold text-slate-600">Upload Image</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="file-input"
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => {
+                                                setFormData({ ...formData, signature: reader.result });
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </section>
 
