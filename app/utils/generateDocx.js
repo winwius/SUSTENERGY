@@ -80,6 +80,26 @@ export const generateDocx = async (data) => {
         signatureRun = new Paragraph({ text: "", spacing: { before: 800 } }); // Keep space if no signature
     }
 
+    // Process Footer Image
+    let footerImageRun = new Paragraph("");
+    try {
+        const response = await fetch(window.location.origin + "/sustenergy_footer.png");
+        const blob = await response.blob();
+        const buffer = await blob.arrayBuffer();
+        footerImageRun = new Paragraph({
+            children: [
+                new ImageRun({
+                    data: new Uint8Array(buffer),
+                    transformation: { width: 650, height: 100 }, // Full width footer
+                }),
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 100 },
+        });
+    } catch (e) {
+        console.error("Error processing footer image", e);
+    }
+
     // --- Header Construction ---
 
     // 1. Logos Row (Shared)
@@ -410,6 +430,8 @@ export const generateDocx = async (data) => {
         new Paragraph({ text: "Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India" }),
         new Paragraph({ text: "Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State" }),
         new Paragraph({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden" }),
+        new Paragraph({ text: "", spacing: { before: 600 } }),
+        footerImageRun,
     ];
 
     // --- TOC Page Construction (Manual Boxed) ---
@@ -517,6 +539,7 @@ export const generateDocx = async (data) => {
                                                 children: [new Paragraph("Electrical Audit Report")],
                                                 verticalAlign: "center",
                                                 width: { size: 50, type: WidthType.PERCENTAGE },
+                                                borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } },
                                             }),
                                             new TableCell({
                                                 children: [
@@ -531,6 +554,7 @@ export const generateDocx = async (data) => {
                                                 ],
                                                 verticalAlign: "center",
                                                 width: { size: 50, type: WidthType.PERCENTAGE },
+                                                borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } },
                                             }),
                                         ],
                                     }),
