@@ -27,78 +27,84 @@ export const generateDocx = async (data) => {
         });
     };
 
+    // Helper to securely fetch images
+    const fetchImage = async (url) => {
+        try {
+            if (!url) return null;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+            const blob = await response.blob();
+            // Basic validation - check if it's actually an image or has size
+            if (blob.size === 0 || blob.type.indexOf('text/html') !== -1) return null;
+            const buffer = await blob.arrayBuffer();
+            return new Uint8Array(buffer);
+        } catch (error) {
+            console.warn(`Could not load image from ${url}`, error);
+            return null;
+        }
+    };
+
     // Process Client Logo
     let logoImageRun = new TextRun("");
-    if (logo) {
-        try {
-            const response = await fetch(logo);
-            const blob = await response.blob();
-            const buffer = await blob.arrayBuffer();
-            logoImageRun = new ImageRun({
-                data: new Uint8Array(buffer),
-                transformation: { width: 100, height: 100 },
-            });
-        } catch (e) {
-            console.error("Error processing client logo", e);
-        }
+    const logoData = await fetchImage(logo);
+    if (logoData) {
+        logoImageRun = new ImageRun({
+            data: logoData,
+            transformation: { width: 100, height: 100 },
+        });
     }
 
     // Process Sustenergy Logo from public folder
     let sustenergyLogoRun = new TextRun("");
-    try {
-        const response = await fetch(window.location.origin + "/sustenergy_logo.png");
-        const blob = await response.blob();
-        const buffer = await blob.arrayBuffer();
+    const sustLogoData = await fetchImage(window.location.origin + "/sustenergy_logo.png");
+    if (sustLogoData) {
         sustenergyLogoRun = new ImageRun({
-            data: new Uint8Array(buffer),
+            data: sustLogoData,
             transformation: { width: 100, height: 80 },
         });
-    } catch (e) {
-        console.error("Error processing sustenergy logo", e);
     }
 
     // Process Signature
-    let signatureRun = new Paragraph({ text: "", spacing: { before: 800 } }); // Default Spacer
+    let signatureRun = new Paragraph({ text: "", spacing: { before: 800 } });
     if (signature) {
-        try {
-            const response = await fetch(signature);
-            const blob = await response.blob();
-            const buffer = await blob.arrayBuffer();
-            signatureRun = new Paragraph({
-                children: [
-                    new ImageRun({
-                        data: new Uint8Array(buffer),
-                        transformation: { width: 150, height: 60 },
+        const sigData = await fetchImage(signature);
+        if (sigData) {
+            signatureRun = new Table({
+                layout: TableLayoutType.FIXED,
+                width: { size: 9000, type: WidthType.DXA },
+                borders: {
+                    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                    insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                },
+                rows: [
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [
+                                            new ImageRun({
+                                                data: sigData,
+                                                transformation: { width: 150, height: 60 },
+                                            }),
+                                        ],
+                                        alignment: AlignmentType.LEFT,
+                                    }),
+                                ],
+                                width: { size: 9000, type: WidthType.DXA },
+                            }),
+                        ],
                     }),
                 ],
-                spacing: { before: 400, after: 400 },
             });
-        } catch (e) {
-            console.error("Error processing signature", e);
         }
-    } else {
-        signatureRun = new Paragraph({ text: "", spacing: { before: 800 } }); // Keep space if no signature
     }
 
-    // Process Footer Image
-    let footerImageRun = new Paragraph("");
-    try {
-        const response = await fetch(window.location.origin + "/sustenergy_footer.png");
-        const blob = await response.blob();
-        const buffer = await blob.arrayBuffer();
-        footerImageRun = new Paragraph({
-            children: [
-                new ImageRun({
-                    data: new Uint8Array(buffer),
-                    transformation: { width: 650, height: 100 }, // Full width footer
-                }),
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 100 },
-        });
-    } catch (e) {
-        console.error("Error processing footer image", e);
-    }
+
 
     // --- Header Construction ---
 
@@ -107,12 +113,12 @@ export const generateDocx = async (data) => {
         children: [
             new TableCell({
                 children: [new Paragraph({ children: [logoImageRun], alignment: AlignmentType.LEFT })],
-                width: { size: 50, type: WidthType.PERCENTAGE },
+                width: { size: 4500, type: WidthType.DXA },
                 verticalAlign: "center",
             }),
             new TableCell({
                 children: [new Paragraph({ children: [sustenergyLogoRun], alignment: AlignmentType.RIGHT })],
-                width: { size: 50, type: WidthType.PERCENTAGE },
+                width: { size: 4500, type: WidthType.DXA },
                 verticalAlign: "center",
             }),
         ],
@@ -145,48 +151,27 @@ export const generateDocx = async (data) => {
                     }),
                 ],
                 columnSpan: 2,
-                width: { size: 100, type: WidthType.PERCENTAGE },
+                width: { size: 9000, type: WidthType.DXA },
                 verticalAlign: "center",
             }),
         ],
     });
 
-    // Helper to create the boxed table structure
+    // Helper to create the boxed table structure - FLATTENED for Mobile Compatibility
     const createBoxedHeader = (rows) => {
-        const contentTable = new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
+        return new Table({
+            layout: TableLayoutType.FIXED,
+            width: { size: 9000, type: WidthType.DXA },
+            columnWidths: [4500, 4500], // CRITICAL: Explicit column widths for FIXED layout
             borders: {
-                top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                top: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
+                left: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
+                right: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
                 insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
                 insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
             },
             rows: rows,
-        });
-
-        return new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: {
-                top: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-                bottom: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-                left: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-                right: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-                insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-            },
-            rows: [
-                new TableRow({
-                    children: [
-                        new TableCell({
-                            children: [contentTable],
-                            width: { size: 100, type: WidthType.PERCENTAGE },
-                            margins: { top: 200, bottom: 200, left: 200, right: 200 },
-                        }),
-                    ],
-                }),
-            ],
         });
     };
 
@@ -265,14 +250,12 @@ export const generateDocx = async (data) => {
     const snapshotRows = await Promise.all(snapshots.map(async (snap, index) => {
         let imageChild = new Paragraph("No Image");
         if (snap.image) {
-            try {
-                const response = await fetch(snap.image);
-                const blob = await response.blob();
-                const buffer = await blob.arrayBuffer();
+            const imageData = await fetchImage(snap.image);
+            if (imageData) {
                 imageChild = new Paragraph({
                     children: [
                         new ImageRun({
-                            data: new Uint8Array(buffer),
+                            data: imageData,
                             transformation: {
                                 width: 300,
                                 height: 200,
@@ -280,8 +263,6 @@ export const generateDocx = async (data) => {
                         }),
                     ],
                 });
-            } catch (e) {
-                console.error("Error processing image", e);
             }
         }
 
@@ -295,7 +276,8 @@ export const generateDocx = async (data) => {
     }));
 
     const snapshotTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
+        layout: TableLayoutType.FIXED,
+        width: { size: 9000, type: WidthType.DXA },
         columnWidths: [1000, 5000, 3000],
         rows: [
             new TableRow({
@@ -325,7 +307,8 @@ export const generateDocx = async (data) => {
     // 5. Power Parameters
     const pp = powerParameters;
     const powerTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
+        layout: TableLayoutType.FIXED,
+        width: { size: 9000, type: WidthType.DXA },
         columnWidths: [2500, 1500, 2500, 2500],
         rows: [
             new TableRow({ children: [createCell("Parameter", true), createCell("Test Point", true), createCell("Value", true), createCell("Remarks", true)] }),
@@ -379,8 +362,9 @@ export const generateDocx = async (data) => {
     const totalLoad = connectedLoad.reduce((acc, curr) => acc + (parseFloat(curr.subTotal) || 0), 0);
 
     const loadTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        columnWidths: [1000, 4000, 1500, 1500, 1500],
+        layout: TableLayoutType.FIXED,
+        width: { size: 9000, type: WidthType.DXA },
+        columnWidths: [700, 3800, 1500, 1000, 2000],
         rows: [
             new TableRow({ children: [createCell("Sl. No", true), createCell("Type of Load", true), createCell("Power (W)", true), createCell("Quantity (Nos)", true), createCell("Sub Total (KW)", true)] }),
             ...loadRows,
@@ -431,7 +415,7 @@ export const generateDocx = async (data) => {
         new Paragraph({ text: "Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State" }),
         new Paragraph({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden" }),
         new Paragraph({ text: "", spacing: { before: 600 } }),
-        footerImageRun,
+        // Footer Image removed as per user request
     ];
 
     // --- TOC Page Construction (Manual Boxed) ---
@@ -444,7 +428,8 @@ export const generateDocx = async (data) => {
     ];
 
     const tocTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
+        layout: TableLayoutType.FIXED,
+        width: { size: 9000, type: WidthType.DXA },
         columnWidths: [1000, 6000, 2000],
         rows: [
             // Header
@@ -523,7 +508,9 @@ export const generateDocx = async (data) => {
                     default: new Footer({
                         children: [
                             new Table({
-                                width: { size: 100, type: WidthType.PERCENTAGE },
+                                layout: TableLayoutType.FIXED,
+                                width: { size: 9000, type: WidthType.DXA },
+                                columnWidths: [4500, 4500], // CRITICAL: Explicit column widths for FIXED layout
                                 borders: {
                                     top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
                                     bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
@@ -538,7 +525,7 @@ export const generateDocx = async (data) => {
                                             new TableCell({
                                                 children: [new Paragraph("Electrical Audit Report")],
                                                 verticalAlign: "center",
-                                                width: { size: 50, type: WidthType.PERCENTAGE },
+                                                width: { size: 4500, type: WidthType.DXA },
                                                 borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } },
                                             }),
                                             new TableCell({
@@ -553,7 +540,7 @@ export const generateDocx = async (data) => {
                                                     }),
                                                 ],
                                                 verticalAlign: "center",
-                                                width: { size: 50, type: WidthType.PERCENTAGE },
+                                                width: { size: 4500, type: WidthType.DXA },
                                                 borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } },
                                             }),
                                         ],
