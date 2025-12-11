@@ -188,8 +188,16 @@ export default function Home() {
                     <div className="card-body">
                         <div className="mb-6 flex flex-col items-center gap-4">
                             {formData.logo && (
-                                <div className="w-40 h-32 bg-white rounded-lg border border-slate-200 flex items-center justify-center p-2">
-                                    <img src={formData.logo} alt="Logo" className="max-w-full max-h-full object-contain" />
+                                <div
+                                    className="relative bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center shadow-sm"
+                                    style={{ width: '80px', height: '64px', minWidth: '80px' }}
+                                >
+                                    <img
+                                        src={formData.logo}
+                                        alt="Logo"
+                                        className="w-full h-full object-contain"
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                    />
                                 </div>
                             )}
                             <div className="flex flex-col items-center gap-2">
@@ -264,23 +272,31 @@ export default function Home() {
                     <div className="card-body space-y-6">
                         {formData.snapshots.map((snap, index) => (
                             <div key={index} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row gap-6 items-start">
-                                <div className="w-full md:w-1/3 shrink-0 flex flex-col gap-3">
-                                    <div className="relative aspect-video bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center shadow-sm">
+                                <div className="shrink-0 flex flex-col gap-2">
+                                    <div
+                                        className="relative bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center shadow-sm"
+                                        style={{ width: '80px', height: '64px', minWidth: '80px' }}
+                                    >
                                         {snap.image ? (
-                                            <img src={snap.image} alt="Preview" className="w-full h-full object-cover" />
+                                            <img
+                                                src={snap.image}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover"
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            />
                                         ) : (
-                                            <div className="text-center p-4">
-                                                <Camera className="mx-auto text-slate-300 mb-2" size={32} />
-                                                <span className="text-slate-400 text-sm">No Image</span>
+                                            <div className="text-center p-2">
+                                                <Camera className="mx-auto text-slate-300 mb-1" size={20} />
+                                                <span className="text-slate-400 text-[10px] leading-tight block">No Image</span>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-semibold text-slate-600">Upload Image</label>
+                                    <div className="flex flex-col gap-1 w-24">
+                                        <label className="text-[10px] font-semibold text-slate-600">Upload</label>
                                         <input
                                             type="file"
                                             accept="image/*"
-                                            className="file-input"
+                                            className="file-input scale-75 origin-top-left -mb-2"
                                             onChange={(e) => handleImageUpload(e, index)}
                                         />
                                     </div>
@@ -508,18 +524,31 @@ export default function Home() {
                     <div className="card-body">
                         <div className="flex items-center gap-4">
                             {formData.signature ? (
-                                <div className="relative w-48 h-24 border rounded overflow-hidden">
-                                    <img src={formData.signature} alt="Signature" className="w-full h-full object-contain" />
+                                <div
+                                    className="relative bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center shadow-sm"
+                                    style={{ width: '80px', height: '64px', minWidth: '80px' }}
+                                >
+                                    <img
+                                        src={formData.signature}
+                                        alt="Signature"
+                                        className="w-full h-full object-contain"
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                    />
                                     <button
                                         onClick={() => setFormData({ ...formData, signature: null })}
-                                        className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full m-1"
+                                        className="absolute top-0 right-0 bg-red-500/90 text-white p-0.5 rounded-full m-1 hover:bg-red-600 transition-colors shadow-sm"
+                                        title="Remove Signature"
                                     >
                                         <X size={12} />
                                     </button>
                                 </div>
                             ) : (
-                                <div className="w-48 h-24 border-2 border-dashed border-slate-300 rounded flex items-center justify-center text-slate-400">
-                                    No Signature
+                                <div
+                                    className="relative bg-slate-50 rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center"
+                                    style={{ width: '80px', height: '64px', minWidth: '80px' }}
+                                >
+                                    <PenTool className="text-slate-300 mb-0.5" size={16} />
+                                    <span className="text-slate-400 text-[9px] leading-tight block">No Sig</span>
                                 </div>
                             )}
 
