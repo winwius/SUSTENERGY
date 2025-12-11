@@ -287,3 +287,28 @@ th {
   background-color: #ede9fe;
   /* lighter purple for hover */
 }
+
+/* Helper to force hide desktop headers on mobile if Tailwind hidden fails */
+.d-none-mobile {
+  display: none !important;
+}
+
+@media (min-width: 768px) {
+  .d-none-mobile {
+    display: block !important;
+  }
+}
+
+/* Helper to reset button styles (remove default borders) */
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 9999px;
+  line-height: 0;
+}
+
+.icon-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
