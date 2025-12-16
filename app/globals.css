@@ -166,6 +166,8 @@ body {
   width: 100%;
   transition: all 0.2s;
   font-size: 0.95rem;
+  overflow-y: auto;
+  resize: vertical;
 }
 
 .input-field:focus {

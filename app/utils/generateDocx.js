@@ -64,45 +64,81 @@ export const generateDocx = async (data) => {
         });
     }
 
+    // Helper to get image dimensions
+    const getImageDimensions = (url) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+            img.onerror = (e) => reject(e);
+            img.src = url;
+        });
+    };
+
     // Process Signature
     let signatureRun = new Paragraph({ text: "", spacing: { before: 800 } });
     if (signature) {
-        const sigData = await fetchImage(signature);
-        if (sigData) {
-            signatureRun = new Table({
-                layout: TableLayoutType.FIXED,
-                width: { size: 9000, type: WidthType.DXA },
-                borders: {
-                    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                    insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                },
-                rows: [
-                    new TableRow({
-                        children: [
-                            new TableCell({
-                                children: [
-                                    new Paragraph({
-                                        children: [
-                                            new ImageRun({
-                                                data: sigData,
-                                                transformation: { width: 150, height: 60 },
-                                            }),
-                                        ],
-                                        alignment: AlignmentType.LEFT,
-                                    }),
-                                ],
-                                width: { size: 9000, type: WidthType.DXA },
-                            }),
-                        ],
-                    }),
-                ],
-            });
+        try {
+            const sigData = await fetchImage(signature);
+            if (sigData) {
+                // Get dimensions to preserve aspect ratio
+                const dims = await getImageDimensions(signature);
+
+                // Calculate scale to fit within a reasonable box (e.g., max width 250, max height 100 - consistent with logo size)
+                // while preserving aspect ratio.
+                const maxWidth = 250;
+                const maxHeight = 100;
+
+                let finalWidth = dims.width;
+                let finalHeight = dims.height;
+
+                // Calculate ratios
+                const widthRatio = maxWidth / finalWidth;
+                const heightRatio = maxHeight / finalHeight;
+
+                // Use the smaller ratio to ensure it fits both dimensions (scaling up or down)
+                const scale = Math.min(widthRatio, heightRatio);
+
+                finalWidth = finalWidth * scale;
+                finalHeight = finalHeight * scale;
+
+                signatureRun = new Table({
+                    layout: TableLayoutType.FIXED,
+                    width: { size: 9000, type: WidthType.DXA },
+                    borders: {
+                        top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                        bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                        left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                        right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                        insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                        insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                    },
+                    rows: [
+                        new TableRow({
+                            children: [
+                                new TableCell({
+                                    children: [
+                                        new Paragraph({
+                                            children: [
+                                                new ImageRun({
+                                                    data: sigData,
+                                                    transformation: { width: finalWidth, height: finalHeight },
+                                                }),
+                                            ],
+                                            alignment: AlignmentType.LEFT,
+                                        }),
+                                    ],
+                                    width: { size: 9000, type: WidthType.DXA },
+                                }),
+                            ],
+                        }),
+                    ],
+                });
+            }
+        } catch (err) {
+            console.warn("Error processing signature", err);
         }
     }
+
 
 
 
@@ -247,33 +283,63 @@ export const generateDocx = async (data) => {
     ];
 
     // 4. Snapshots
-    const snapshotRows = await Promise.all(snapshots.map(async (snap, index) => {
-        let imageChild = new Paragraph("No Image");
-        if (snap.image) {
-            const imageData = await fetchImage(snap.image);
-            if (imageData) {
-                imageChild = new Paragraph({
+    // 4. Snapshots (Grouped Logic)
+    const snapshotRows = [];
+    let slNo = 1;
+
+    for (const group of snapshots) {
+        // If group has no images but has description
+        if ((!group.images || group.images.length === 0) && group.description) {
+            snapshotRows.push(
+                new TableRow({
                     children: [
-                        new ImageRun({
-                            data: imageData,
-                            transformation: {
-                                width: 300,
-                                height: 200,
-                            },
-                        }),
+                        new TableCell({ children: [new Paragraph(slNo.toString())] }),
+                        new TableCell({ children: [new Paragraph("No Image")] }),
+                        new TableCell({ children: [new Paragraph(group.description)] }),
                     ],
-                });
-            }
+                })
+            );
+            slNo++;
+            continue;
         }
 
-        return new TableRow({
-            children: [
-                new TableCell({ children: [new Paragraph((index + 1).toString())] }),
-                new TableCell({ children: [imageChild] }),
-                new TableCell({ children: [new Paragraph(snap.description)] }),
-            ],
-        });
-    }));
+        // Iterate through images in the group
+        if (group.images && group.images.length > 0) {
+            for (let i = 0; i < group.images.length; i++) {
+                const imgUrl = group.images[i];
+                let imageChild = new Paragraph("Error Loading Image");
+
+                const imageData = await fetchImage(imgUrl);
+                if (imageData) {
+                    imageChild = new Paragraph({
+                        children: [
+                            new ImageRun({
+                                data: imageData,
+                                transformation: {
+                                    width: 300,
+                                    height: 200,
+                                },
+                            }),
+                        ],
+                    });
+                }
+
+                // First image gets the description and Sl No. Subsequent images in the same group get empty/ditto.
+                const isFirst = i === 0;
+
+                snapshotRows.push(
+                    new TableRow({
+                        children: [
+                            new TableCell({ children: [new Paragraph(isFirst ? slNo.toString() : "")] }),
+                            new TableCell({ children: [imageChild] }),
+                            new TableCell({ children: [new Paragraph(isFirst ? group.description : "")] }),
+                        ],
+                    })
+                );
+            }
+            slNo++;
+        }
+    }
 
     const snapshotTable = new Table({
         layout: TableLayoutType.FIXED,
@@ -449,11 +515,7 @@ export const generateDocx = async (data) => {
                         children: [
                             new Paragraph({
                                 children: [
-                                    new TextRun({
-                                        children: [
-                                            new SimpleField(`PAGEREF ${item.link} \\h`),
-                                        ],
-                                    }),
+                                    new SimpleField(`PAGEREF ${item.link}`),
                                 ],
                                 alignment: AlignmentType.CENTER,
                             })

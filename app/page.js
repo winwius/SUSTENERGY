@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Download, Camera, FileText, Zap, Activity, CheckCircle, PenTool, Upload, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Download, Camera, FileText, Zap, Activity, CheckCircle, PenTool, Upload, X, ChevronDown, ChevronUp, Images } from "lucide-react";
 import { generateDocx } from "./utils/generateDocx";
 
 function CollapsibleCard({ title, icon: Icon, theme, children, headerContent, bodyClassName = "card-body" }) {
@@ -65,7 +65,7 @@ export default function Home() {
         connectedLoad: [],
         conclusions: [""],
         signature: null,
-
+        useDefaultSignature: true,
         logo: null,
     });
 
@@ -97,11 +97,47 @@ export default function Home() {
         });
     };
 
+    // Helper: Resize image before storing
+    const resizeImage = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1000;
+                    const MAX_HEIGHT = 1000;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL(file.type));
+                };
+            };
+        });
+    };
+
     // Snapshots
     const addSnapshot = () => {
         setFormData((prev) => ({
             ...prev,
-            snapshots: [...prev.snapshots, { image: null, description: "" }],
+            snapshots: [...prev.snapshots, { images: [], description: "" }],
         }));
     };
 
@@ -112,23 +148,58 @@ export default function Home() {
         }));
     };
 
-    const handleImageUpload = (e, index) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 20 * 1024 * 1024) { // 20 MB Check
-                alert("File size exceeds 20MB limit.");
-                return;
+    // Header/Footer "Add Photo" -> Creates a NEW GROUP with all selected images
+    const handleMultiFileUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        const newImages = [];
+        for (const file of files) {
+            if (file.size <= 20 * 1024 * 1024) {
+                const img = await resizeImage(file);
+                newImages.push(img);
             }
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData((prev) => {
-                    const newSnapshots = [...prev.snapshots];
-                    newSnapshots[index].image = reader.result;
-                    return { ...prev, snapshots: newSnapshots };
-                });
-            };
-            reader.readAsDataURL(file);
         }
+
+        // Create ONE new group for this batch of uploads
+        setFormData((prev) => ({
+            ...prev,
+            snapshots: [
+                ...prev.snapshots,
+                { images: newImages, description: "" }
+            ]
+        }));
+
+        e.target.value = '';
+    };
+
+    // Add MORE photos to an EXISTING group
+    const handleAddPhotosToGroup = async (e, groupIndex) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        const newImages = [];
+        for (const file of files) {
+            if (file.size <= 20 * 1024 * 1024) {
+                const img = await resizeImage(file);
+                newImages.push(img);
+            }
+        }
+
+        setFormData((prev) => {
+            const newSnapshots = [...prev.snapshots];
+            newSnapshots[groupIndex].images = [...newSnapshots[groupIndex].images, ...newImages];
+            return { ...prev, snapshots: newSnapshots };
+        });
+        e.target.value = '';
+    };
+
+    const removeImageFromGroup = (groupIndex, imageIndex) => {
+        setFormData((prev) => {
+            const newSnapshots = [...prev.snapshots];
+            newSnapshots[groupIndex].images = newSnapshots[groupIndex].images.filter((_, i) => i !== imageIndex);
+            return { ...prev, snapshots: newSnapshots };
+        });
     };
 
     const handleSnapshotDescChange = (value, index) => {
@@ -138,6 +209,23 @@ export default function Home() {
             return { ...prev, snapshots: newSnapshots };
         });
     };
+
+    // ... (rest of the file until return)
+
+    /* Inside the render return, replace the Snapshots CollapsibleCard block */
+    // Since I cannot match "... (rest of the file)" in 'TargetContent' easily, I will target the functions and the specific CollapsibleCard block.
+    // However, the tool requires contiguous blocks. I will split this into two edits if needed, or target the range from 'const resizeImage' (which doesn't exist yet)
+    // Wait, the functions 'addSnapshot' etc exist. I will replace the whole block of Snapshot Logic + The Snapshots Card.
+    // Let's verify line numbers.
+    // 'addSnapshot' starts line 101.
+    // 'CollapsibleCard' for snapshots starts line 293 and ends 369.
+    // I will replace lines 101-140 (Handlers) AND lines 293-369 (JSX) separately?
+    // No, I can only do contiguous. The handlers are separated from JSX by 'Logo Upload' etc.
+    // I must use 'multi_replace_file_content'.
+
+    /* REDO STRATEGY */
+    /* I will use the 'multi_replace_file_content' tool. */
+
 
     // Logo Upload
     const handleLogoUpload = (e) => {
@@ -249,6 +337,7 @@ export default function Home() {
                             />
                         </div>
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-600">Branch Name</label>
@@ -294,79 +383,126 @@ export default function Home() {
                     title="Snapshots"
                     icon={Camera}
                     theme="purple"
-                    bodyClassName="card-body space-y-6"
-                    headerContent={({ expand }) => (
-                        <button
-                            onClick={(e) => {
-                                expand(e);
-                                addSnapshot();
-                            }}
-                            className="btn-add flex items-center gap-2"
-                        >
-                            <Plus size={16} /> Add Photo
-                        </button>
-                    )}
+                    bodyClassName="card-body bg-slate-50/50 space-y-6"
                 >
-                    {formData.snapshots.map((snap, index) => (
-                        <div key={index} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row gap-6 items-start">
-                            <div className="shrink-0 flex flex-col gap-2">
-                                <div
-                                    className="relative bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center shadow-sm"
-                                    style={{ width: '80px', height: '64px', minWidth: '80px' }}
-                                >
-                                    {snap.image ? (
-                                        <img
-                                            src={snap.image}
-                                            alt="Preview"
-                                            className="w-full h-full object-cover"
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    <div className="space-y-8">
+                        {formData.snapshots.map((group, groupIndex) => (
+                            <div key={groupIndex} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm relative group-card">
+                                {/* Group Actions (Add Photo & Delete) */}
+                                <div className="flex items-center gap-3 mb-3 justify-end">
+                                    <label
+                                        className="btn-add flex items-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded-lg cursor-pointer transition-colors text-xs font-semibold"
+                                        title="Add Photos to this group"
+                                    >
+                                        <Plus size={16} /> Add Photos
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            className="hidden"
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => handleAddPhotosToGroup(e, groupIndex)}
                                         />
-                                    ) : (
-                                        <div className="text-center p-2">
-                                            <Camera className="mx-auto text-slate-300 mb-1" size={20} />
-                                            <span className="text-slate-400 text-[10px] leading-tight block">No Image</span>
+                                    </label>
+
+                                    <button
+                                        onClick={() => removeSnapshot(groupIndex)}
+                                        className="btn-add flex items-center gap-2 bg-purple-50 text-purple-600 hover:bg-red-50 hover:text-red-600 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold"
+                                        title="Delete Entire Group"
+                                    >
+                                        <Trash2 size={16} /> Delete
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {/* Description - Prominent at Top for the Group */}
+                                    <div>
+                                        <textarea
+                                            placeholder="Describe the observations for this set of photos..."
+                                            className="input-field min-h-[100px] resize-y text-sm"
+                                            value={group.description}
+                                            onChange={(e) => handleSnapshotDescChange(e.target.value, groupIndex)}
+                                        />
+                                    </div>
+
+                                    {/* Image Grid */}
+                                    <div>
+                                        <div className="flex flex-wrap gap-3">
+                                            {group.images.map((img, imgIndex) => (
+                                                <div
+                                                    key={imgIndex}
+                                                    className="relative bg-white rounded-lg border border-slate-200 flex items-center justify-center shadow-sm"
+                                                    style={{ width: '80px', height: '64px', minWidth: '80px' }}
+                                                >
+                                                    <img
+                                                        src={img}
+                                                        alt={`Snapshot ${imgIndex + 1}`}
+                                                        className="w-full h-full object-contain rounded-lg"
+                                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                                    />
+                                                    {/* Individual Image Delete Badge */}
+                                                    <button
+                                                        onClick={() => removeImageFromGroup(groupIndex, imgIndex)}
+                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md hover:bg-red-600 transition-all z-10"
+                                                        title="Remove Image"
+                                                    >
+                                                        <X size={12} strokeWidth={3} />
+                                                    </button>
+                                                </div>
+                                            ))}
+
+                                            {/* Always visible Add Placeholder at the end */}
+
                                         </div>
-                                    )}
-                                </div>
-                                <div className="flex flex-col gap-1 w-24">
-                                    <label className="text-[10px] font-semibold text-slate-600">Upload</label>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="file-input scale-75 origin-top-left -mb-2"
-                                        onChange={(e) => handleImageUpload(e, index)}
-                                    />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex-1 w-full flex flex-col gap-2">
-                                <label className="text-sm font-semibold text-slate-600">Description</label>
-                                <textarea
-                                    placeholder="Describe the issue shown in the image..."
-                                    className="input-field flex-1 min-h-[120px]"
-                                    value={snap.description}
-                                    onChange={(e) => handleSnapshotDescChange(e.target.value, index)}
-                                />
-                            </div>
-                            <button onClick={() => removeSnapshot(index)} className="text-slate-400 hover:text-red-500 p-2 transition-colors self-start md:self-center">
-                                <Trash2 size={20} />
-                            </button>
-                        </div>
-                    ))}
-                    {formData.snapshots.length === 0 && (
-                        <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300 cursor-pointer hover:bg-slate-100 transition-colors" onClick={addSnapshot}>
-                            <Camera className="mx-auto text-slate-300 mb-2" size={48} />
-                            <p className="text-slate-500 font-medium">No snapshots added yet</p>
-                            <p className="text-blue-500 text-sm mt-1">Click "Add Photo" Button to add an image</p>
-                        </div>
-                    )}
-                    {formData.snapshots.length > 0 && (
-                        <div className="flex justify-center pt-4">
-                            <button onClick={addSnapshot} className="btn-add flex items-center gap-2 w-full md:w-auto justify-center">
-                                <Plus size={16} /> Add Another Photo
-                            </button>
-                        </div>
-                    )}
-                </CollapsibleCard>
+                        ))
+                        }
+
+                        {/* Empty State */}
+                        {
+                            formData.snapshots.length === 0 && (
+                                <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-slate-300">
+                                    <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Camera className="text-purple-400" size={32} />
+                                    </div>
+                                    <h3 className="text-slate-700 font-semibold mb-6">No Observations Added</h3>
+                                    <label className="btn-add flex items-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 px-6 py-2 cursor-pointer shadow-sm mx-auto">
+                                        <Plus size={18} /> Add First Observation
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            className="hidden"
+                                            style={{ display: 'none' }}
+                                            onChange={handleMultiFileUpload}
+                                        />
+                                    </label>
+                                </div>
+                            )
+                        }
+
+                        {/* Footer Action */}
+                        {
+                            formData.snapshots.length > 0 && (
+                                <div className="mt-4 flex justify-start">
+                                    <label className="btn-add w-full md:w-auto py-3 md:py-2 flex items-center justify-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 cursor-pointer">
+                                        <Plus size={18} /> Add another observation
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            className="hidden"
+                                            style={{ display: 'none' }}
+                                            onChange={handleMultiFileUpload}
+                                        />
+                                    </label>
+                                </div>
+                            )
+                        }
+                    </div >
+                </CollapsibleCard >
 
                 {/* 4. Power Parameters - Orange Theme */}
                 {/* 4. Power Parameters - Orange Theme */}
@@ -567,8 +703,8 @@ export default function Home() {
                     {formData.conclusions.map((conc, index) => (
                         <div key={index} className="flex gap-3 items-start">
                             <span className="text-teal-500 pt-3 text-lg">•</span>
-                            <input
-                                className="input-field"
+                            <textarea
+                                className="input-field min-h-[60px] resize-y"
                                 value={conc}
                                 onChange={(e) => handleConclusionChange(e.target.value, index)}
                                 placeholder="Enter conclusion point..."
@@ -590,56 +726,82 @@ export default function Home() {
                 {/* 7. Signature Upload - New Section */}
                 {/* 7. Signature Upload - New Section */}
                 <CollapsibleCard title="Signature" icon={PenTool} theme="blue">
-                    <div className="flex items-center gap-6">
-                        <div className="shrink-0 flex flex-col gap-2">
-                            <div
-                                className="relative bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center shadow-sm"
-                                style={{ width: '80px', height: '64px', minWidth: '80px' }}
-                            >
-                                {formData.signature ? (
-                                    <img
-                                        src={formData.signature}
-                                        alt="Signature"
-                                        className="w-full h-full object-contain"
-                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                    />
-                                ) : (
-                                    <div className="text-center p-2 flex flex-col items-center justify-center h-full">
-                                        <PenTool className="mx-auto text-slate-300 mb-0.5" size={16} />
-                                        <span className="text-slate-400 text-[9px] leading-tight block">No Sig</span>
-                                    </div>
-                                )}
-                            </div>
+                    <div className="flex flex-col gap-6">
+                        {/* Default vs Custom Toggle */}
+                        <div className="flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                            <input
+                                type="checkbox"
+                                id="useDefaultSig"
+                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                                checked={formData.useDefaultSignature}
+                                onChange={(e) => setFormData({ ...formData, useDefaultSignature: e.target.checked })}
+                            />
+                            <label htmlFor="useDefaultSig" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                                Use Default Signature
+                            </label>
                         </div>
 
-                        <div className="flex items-center gap-4 flex-1">
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold text-slate-600">Upload Signature</label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="file-input w-full max-w-[200px]"
-                                    onChange={(e) => {
-                                        const file = e.target.files[0];
-                                        if (file) {
-                                            const reader = new FileReader();
-                                            reader.onloadend = () => {
-                                                setFormData({ ...formData, signature: reader.result });
-                                            };
-                                            reader.readAsDataURL(file);
-                                        }
-                                    }}
-                                />
-                            </div>
-                            {formData.signature && (
-                                <button
-                                    onClick={() => setFormData({ ...formData, signature: null })}
-                                    className="icon-btn text-slate-400 hover:text-red-500 transition-colors border border-slate-200 rounded-lg p-2 hover:border-red-200 hover:bg-red-50"
-                                    title="Delete Signature"
+                        <div className="flex items-center gap-6">
+                            <div className="shrink-0 flex flex-col gap-2">
+                                <div
+                                    className="relative bg-white rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center shadow-sm"
+                                    style={{ width: '120px', height: '64px', minWidth: '120px' }}
                                 >
-                                    <Trash2 size={18} />
-                                </button>
-                            )}
+                                    {(formData.useDefaultSignature || formData.signature) ? (
+                                        <img
+                                            src={formData.useDefaultSignature ? "/default_signature.jpg" : formData.signature}
+                                            alt="Signature"
+                                            className="w-full h-full object-contain"
+                                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                        />
+                                    ) : (
+                                        <div className="text-center p-2 flex flex-col items-center justify-center h-full">
+                                            <PenTool className="mx-auto text-slate-300 mb-0.5" size={16} />
+                                            <span className="text-slate-400 text-[9px] leading-tight block">No Sig</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 flex-1">
+                                {/* Custom File Input Button */}
+                                <div className="w-full">
+                                    <label
+                                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-dashed border-slate-300 text-slate-600 text-sm font-medium transition-all ${formData.useDefaultSignature
+                                                ? 'opacity-50 cursor-not-allowed bg-slate-50'
+                                                : 'hover:bg-slate-50 hover:border-slate-400 cursor-pointer bg-white'
+                                            }`}
+                                    >
+                                        <Upload size={16} />
+                                        <span>Add a Custom Signature</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            disabled={formData.useDefaultSignature}
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => {
+                                                        setFormData({ ...formData, signature: reader.result });
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                                {!formData.useDefaultSignature && formData.signature && (
+                                    <button
+                                        onClick={() => setFormData({ ...formData, signature: null })}
+                                        className="icon-btn text-slate-400 hover:text-red-500 transition-colors border border-slate-200 rounded-lg p-2 hover:border-red-200 hover:bg-red-50"
+                                        title="Delete Signature"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </CollapsibleCard>
@@ -647,7 +809,10 @@ export default function Home() {
                 {/* Action Bar */}
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-slate-200 flex justify-center z-50 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
                     <button
-                        onClick={() => generateDocx(formData)}
+                        onClick={() => generateDocx({
+                            ...formData,
+                            signature: formData.useDefaultSignature ? window.location.origin + "/default_signature.jpg" : formData.signature
+                        })}
                         className="btn-primary flex items-center gap-3"
                     >
                         <Download size={24} />
