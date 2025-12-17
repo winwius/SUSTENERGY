@@ -1,7 +1,184 @@
+/**
+ * Energy Audit Form - Document Generator
+ * Generates a DOCX file with audit details, observations, and snapshots
+ * Based on simplified reference methodology
+ */
 
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, WidthType, BorderStyle, HeadingLevel, AlignmentType, Header, Footer, PageNumber, PageBreak, SimpleField, BookmarkStart, BookmarkEnd, ShadingType, TableLayoutType } from "docx";
-import { saveAs } from "file-saver";
+import {
+    Document,
+    Packer,
+    Paragraph,
+    TextRun,
+    Table,
+    TableRow,
+    TableCell,
+    ImageRun,
+    WidthType,
+    BorderStyle,
+    AlignmentType,
+    Header,
+    Footer,
+    PageNumber,
+    BookmarkStart,
+    BookmarkEnd,
+    SimpleField
+} from "docx";
 
+/**
+ * Custom download function for reliable file downloads
+ */
+function downloadFile(blob, fileName) {
+    const docxBlob = new Blob([blob], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+
+    const url = window.URL.createObjectURL(docxBlob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = fileName;
+
+    document.body.appendChild(a);
+    a.click();
+
+    window.setTimeout(function () {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }, 250);
+}
+
+/**
+ * Convert image URL/DataURL to Uint8Array for DOCX embedding
+ */
+async function convertImageToBytes(url) {
+    if (!url) return null;
+    try {
+        if (url.startsWith('data:')) {
+            const base64Data = url.split(',')[1];
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        // Handle external URLs
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
+    } catch (error) {
+        console.error('Error converting image:', error);
+        return null;
+    }
+}
+
+/**
+ * Create a table row with label and value
+ */
+function createTableRow(label, value) {
+    return new TableRow({
+        children: [
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: label,
+                                bold: true,
+                                size: 24,
+                                color: "4B5563"
+                            })
+                        ]
+                    })
+                ],
+                width: {
+                    size: 30,
+                    type: WidthType.PERCENTAGE
+                },
+                shading: {
+                    fill: "F3F4F6"
+                },
+                margins: {
+                    top: 100,
+                    bottom: 100,
+                    left: 150,
+                    right: 150
+                }
+            }),
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: value || "-",
+                                size: 24,
+                                color: "1F2937"
+                            })
+                        ]
+                    })
+                ],
+                width: {
+                    size: 70,
+                    type: WidthType.PERCENTAGE
+                },
+                margins: {
+                    top: 100,
+                    bottom: 100,
+                    left: 150,
+                    right: 150
+                }
+            })
+        ]
+    });
+}
+
+/**
+ * Create a data table row (for power parameters, load details)
+ */
+function createDataRow(cells, isHeader = false) {
+    return new TableRow({
+        children: cells.map((text, index) =>
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: text !== null && text !== undefined ? String(text) : "-",
+                                bold: isHeader,
+                                size: 22,
+                                color: isHeader ? "1F2937" : "4B5563"
+                            })
+                        ],
+                        alignment: index === 0 ? AlignmentType.LEFT : AlignmentType.CENTER
+                    })
+                ],
+                shading: isHeader ? { fill: "E5E7EB" } : undefined,
+                margins: {
+                    top: 80,
+                    bottom: 80,
+                    left: 100,
+                    right: 100
+                }
+            })
+        )
+    });
+}
+
+/**
+ * Format date string
+ */
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+}
+
+/**
+ * Main document generation function
+ */
 export const generateDocx = async (data) => {
     const {
         branchName,
@@ -11,719 +188,843 @@ export const generateDocx = async (data) => {
         inspectionDate,
         client,
         generalObservations,
+        majorHighlights,
         snapshots,
         powerParameters,
         connectedLoad,
         conclusions,
         logo,
-        signature // Extract signature
+        signature
     } = data;
 
-    // Helper to create table cells
-    const createCell = (text, bold = false) => {
-        const safeText = text !== null && text !== undefined ? String(text) : "-";
-        return new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: safeText, bold })] })],
-            verticalAlign: "center",
-        });
-    };
+    // Prepare document children
+    const documentChildren = [];
 
-    // Helper: Fetch and convert image to Uint8Array with Word compatibility
-    const fetchImage = async (url) => {
-        if (!url) return null;
-        try {
-            // Step 1: Load the image into an Image element to validate it
-            const img = await new Promise((resolve, reject) => {
-                const image = new Image();
-                image.onload = () => resolve(image);
-                image.onerror = (e) => {
-                    console.error('Failed to load image:', url);
-                    reject(e);
-                };
-                // Set crossOrigin for external URLs (data URLs don't need it)
-                if (!url.startsWith('data:')) {
-                    image.crossOrigin = 'anonymous';
+    // ========== TITLE ==========
+    documentChildren.push(
+        new Paragraph({
+            children: [
+                new TextRun({
+                    text: "ELECTRICAL SAFETY AUDIT REPORT",
+                    bold: true,
+                    size: 48,
+                    color: "2563EB"
+                })
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 }
+        })
+    );
+
+    // Branch info
+    if (branchName) {
+        documentChildren.push(
+            new Paragraph({
+                children: [
+                    new TextRun({
+                        text: `BRANCH: ${branchName}`,
+                        bold: true,
+                        size: 28,
+                        color: "374151"
+                    })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 100 }
+            })
+        );
+    }
+
+    if (branchCode) {
+        documentChildren.push(
+            new Paragraph({
+                children: [
+                    new TextRun({
+                        text: `BRANCH CODE: ${branchCode}`,
+                        size: 24,
+                        color: "6B7280"
+                    })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 400 }
+            })
+        );
+    }
+
+    // Horizontal line
+    documentChildren.push(
+        new Paragraph({
+            border: {
+                bottom: {
+                    color: "CCCCCC",
+                    space: 1,
+                    size: 6,
+                    style: BorderStyle.SINGLE
                 }
-                image.src = url;
-            });
+            },
+            spacing: { after: 400 }
+        })
+    );
 
-            // Step 2: Force re-compression through canvas
-            // This strips metadata and ensures clean binary data that Word accepts
-            const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
+    // ========== GENERAL INFORMATION TABLE ==========
+    documentChildren.push(
+        new Paragraph({
+            children: [
+                new TextRun({
+                    text: "General Information",
+                    bold: true,
+                    size: 32,
+                    color: "4285F4"
+                })
+            ],
+            spacing: { before: 200, after: 200 }
+        })
+    );
 
-            const ctx = canvas.getContext('2d', { alpha: true });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
+    const infoRows = [];
+    if (refNo) infoRows.push(createTableRow("Reference No", refNo));
+    if (date) infoRows.push(createTableRow("Report Date", formatDate(date)));
+    if (inspectionDate) infoRows.push(createTableRow("Inspection Date", formatDate(inspectionDate)));
+    if (client) infoRows.push(createTableRow("Client", client));
 
-            // Step 3: Export using toDataURL (more reliable than toBlob for Word)
-            // Always use PNG to preserve quality and transparency
-            const dataURL = canvas.toDataURL('image/png', 1.0);
+    if (infoRows.length > 0) {
+        documentChildren.push(
+            new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: infoRows
+            })
+        );
+    }
 
-            // Step 4: Convert data URL to Uint8Array
-            // Strip the "data:image/png;base64," prefix
-            const base64Data = dataURL.split(',')[1];
+    // ========== TABLE OF CONTENTS ==========
+    documentChildren.push(
+        new Paragraph({
+            children: [
+                new TextRun({
+                    text: "Table of Contents",
+                    bold: true,
+                    size: 36,
+                    color: "1F2937"
+                })
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 400, after: 300 }
+        })
+    );
 
-            // Decode base64 to binary string
-            const binaryString = atob(base64Data);
+    // TOC Table with teal header
+    const tocItems = [
+        { sl: "1", desc: "Audit - General observations", bookmark: "section_observations" },
+        { sl: "2", desc: "Major Highlights", bookmark: "section_highlights" },
+        { sl: "3", desc: "Snapshots of electrical installation", bookmark: "section_snapshots" },
+        { sl: "4", desc: "Power parameters", bookmark: "section_power" },
+        { sl: "5", desc: "Connected load detail", bookmark: "section_load" },
+        { sl: "6", desc: "Conclusions", bookmark: "section_conclusions" }
+    ];
 
-            // Convert binary string to Uint8Array
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
+    // Create TOC header row with teal background
+    const tocHeaderRow = new TableRow({
+        children: [
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        children: [new TextRun({ text: "Sl. No", bold: true, size: 24, color: "FFFFFF" })],
+                        alignment: AlignmentType.CENTER
+                    })
+                ],
+                shading: { fill: "2DD4BF" },
+                width: { size: 15, type: WidthType.PERCENTAGE },
+                margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            }),
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        children: [new TextRun({ text: "Description", bold: true, size: 24, color: "FFFFFF" })]
+                    })
+                ],
+                shading: { fill: "2DD4BF" },
+                width: { size: 65, type: WidthType.PERCENTAGE },
+                margins: { top: 100, bottom: 100, left: 150, right: 100 }
+            }),
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        children: [new TextRun({ text: "Page No", bold: true, size: 24, color: "FFFFFF" })],
+                        alignment: AlignmentType.CENTER
+                    })
+                ],
+                shading: { fill: "2DD4BF" },
+                width: { size: 20, type: WidthType.PERCENTAGE },
+                margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            })
+        ]
+    });
 
-            console.log(`Processed image: ${url.substring(0, 50)}... (${bytes.length} bytes, PNG)`);
-
-            return bytes;
-        } catch (error) {
-            console.error(`Failed to process image from ${url}:`, error);
-            return null;
-        }
-    };
-
-    // Remove the cloneBuffer helper - we'll fetch fresh each time instead
-    // This forces the docx library to create unique relationship IDs
-
-    // Process Client Logo - store URL only, fetch fresh each time needed
-    const clientLogoUrl = logo;
-
-    // Process Sustenergy Logo - store URL only
-    const sustLogoUrl = window.location.origin + "/sustenergy_logo.png";
-
-    // Helper to get image dimensions
-    const getImageDimensions = (url) => {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-            img.onerror = (e) => reject(e);
-            img.src = url;
-        });
-    };
-
-    // Process Signature - fetch data BEFORE creating the table
-    let signatureRun = new Paragraph({ text: "", spacing: { before: 800 } });
-    if (signature) {
-        try {
-            const sigData = await fetchImage(signature);
-            if (sigData) {
-                // Get dimensions to preserve aspect ratio
-                const dims = await getImageDimensions(signature);
-
-                // Adjusted limits to fit within page width (approx 600px for 9000 DXA)
-                const maxWidth = 600;
-                const maxHeight = 300;
-
-                let finalWidth = dims.width;
-                let finalHeight = dims.height;
-
-                // Calculate ratios
-                const widthRatio = maxWidth / finalWidth;
-                const heightRatio = maxHeight / finalHeight;
-
-                // Use the smaller ratio to ensure it fits both dimensions (scaling up or down)
-                const scale = Math.min(widthRatio, heightRatio, 1);
-
-                if (finalWidth > maxWidth || finalHeight > maxHeight) {
-                    const scaleFactor = Math.min(maxWidth / finalWidth, maxHeight / finalHeight);
-                    finalWidth = finalWidth * scaleFactor;
-                    finalHeight = finalHeight * scaleFactor;
-                }
-
-
-                signatureRun = new Table({
-                    layout: TableLayoutType.FIXED,
-                    width: { size: 9000, type: WidthType.DXA },
-                    columnWidths: [9000],
+    // Create TOC data rows
+    const tocDataRows = tocItems.map(item =>
+        new TableRow({
+            children: [
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [new TextRun({ text: item.sl, size: 24, color: "374151" })],
+                            alignment: AlignmentType.CENTER
+                        })
+                    ],
+                    margins: { top: 80, bottom: 80, left: 100, right: 100 },
                     borders: {
-                        top: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                        bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                        left: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                        right: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                        insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                        insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                    },
-                    rows: [
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                    }
+                }),
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [new TextRun({ text: item.desc, size: 24, color: "374151" })]
+                        })
+                    ],
+                    margins: { top: 80, bottom: 80, left: 150, right: 100 },
+                    borders: {
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                    }
+                }),
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [new SimpleField(`PAGEREF ${item.bookmark}`)],
+                            alignment: AlignmentType.CENTER
+                        })
+                    ],
+                    margins: { top: 80, bottom: 80, left: 100, right: 100 },
+                    borders: {
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                    }
+                })
+            ]
+        })
+    );
+
+    documentChildren.push(
+        new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+                insideVertical: { style: BorderStyle.NONE }
+            },
+            rows: [tocHeaderRow, ...tocDataRows]
+        })
+    );
+
+    // ========== GENERAL OBSERVATIONS ==========
+    if (generalObservations) {
+        documentChildren.push(
+            new Paragraph({
+                children: [
+                    new BookmarkStart("section_observations"),
+                    new TextRun({
+                        text: "1.0 Audit - General Observations",
+                        bold: true,
+                        size: 32,
+                        color: "10B981"
+                    }),
+                    new BookmarkEnd("section_observations")
+                ],
+                spacing: { before: 400, after: 200 }
+            })
+        );
+
+        documentChildren.push(
+            new Paragraph({
+                children: [
+                    new TextRun({
+                        text: generalObservations,
+                        size: 24,
+                        color: "374151"
+                    })
+                ],
+                spacing: { after: 200 }
+            })
+        );
+    }
+
+    // ========== MAJOR HIGHLIGHTS ==========
+    if (majorHighlights && majorHighlights.length > 0 && majorHighlights.some(h => h.trim() !== "")) {
+        documentChildren.push(
+            new Paragraph({
+                children: [
+                    new BookmarkStart("section_highlights"),
+                    new TextRun({
+                        text: "2.0 Major Highlights",
+                        bold: true,
+                        size: 32,
+                        color: "F59E0B"
+                    }),
+                    new BookmarkEnd("section_highlights")
+                ],
+                spacing: { before: 400, after: 200 }
+            })
+        );
+
+        majorHighlights.forEach(highlight => {
+            if (highlight.trim() !== "") {
+                documentChildren.push(
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `• ${highlight}`,
+                                size: 24,
+                                color: "374151"
+                            })
+                        ],
+                        spacing: { after: 100 }
+                    })
+                );
+            }
+        });
+    }
+    // ========== SNAPSHOTS ==========
+    if (snapshots && snapshots.length > 0) {
+        documentChildren.push(
+            new Paragraph({
+                children: [
+                    new BookmarkStart("section_snapshots"),
+                    new TextRun({
+                        text: "3.0 Snapshots of Electrical Installation",
+                        bold: true,
+                        size: 32,
+                        color: "8B5CF6"
+                    }),
+                    new BookmarkEnd("section_snapshots")
+                ],
+                spacing: { before: 400, after: 200 }
+            })
+        );
+
+        // Create snapshot table header row with teal background
+        const snapshotHeaderRow = new TableRow({
+            children: [
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [new TextRun({ text: "Sl. No", bold: true, size: 24, color: "FFFFFF" })],
+                            alignment: AlignmentType.CENTER
+                        })
+                    ],
+                    shading: { fill: "2DD4BF" },
+                    width: { size: 10, type: WidthType.PERCENTAGE },
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 }
+                }),
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [new TextRun({ text: "Image", bold: true, size: 24, color: "FFFFFF" })]
+                        })
+                    ],
+                    shading: { fill: "2DD4BF" },
+                    width: { size: 40, type: WidthType.PERCENTAGE },
+                    margins: { top: 100, bottom: 100, left: 150, right: 100 }
+                }),
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [new TextRun({ text: "Description", bold: true, size: 24, color: "FFFFFF" })]
+                        })
+                    ],
+                    shading: { fill: "2DD4BF" },
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                    margins: { top: 100, bottom: 100, left: 150, right: 100 }
+                })
+            ]
+        });
+
+        // Create snapshot data rows
+        const snapshotDataRows = [];
+        let slNo = 1;
+
+        for (const group of snapshots) {
+            // Get images for this group
+            const groupImages = group.images || [];
+            const description = group.description || "";
+
+            if (groupImages.length === 0) {
+                // No images, just description
+                snapshotDataRows.push(
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [new TextRun({ text: slNo.toString(), size: 24, color: "374151" })],
+                                        alignment: AlignmentType.CENTER
+                                    })
+                                ],
+                                margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                            }),
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [new TextRun({ text: "No Image", size: 22, color: "9CA3AF", italics: true })]
+                                    })
+                                ],
+                                margins: { top: 100, bottom: 100, left: 150, right: 100 },
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                            }),
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [new TextRun({ text: description, size: 22, color: "374151" })]
+                                    })
+                                ],
+                                margins: { top: 100, bottom: 100, left: 150, right: 100 },
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                            })
+                        ]
+                    })
+                );
+                slNo++;
+            } else {
+                // Process each image in the group
+                for (let i = 0; i < groupImages.length; i++) {
+                    const imgUrl = groupImages[i];
+                    let imageContent = new Paragraph({
+                        children: [new TextRun({ text: "Error loading image", size: 20, color: "EF4444", italics: true })]
+                    });
+
+                    try {
+                        const imgBytes = await convertImageToBytes(imgUrl);
+                        if (imgBytes) {
+                            imageContent = new Paragraph({
+                                children: [
+                                    new ImageRun({
+                                        data: imgBytes,
+                                        transformation: {
+                                            width: 200,
+                                            height: 150
+                                        },
+                                        type: 'png'
+                                    })
+                                ]
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error processing snapshot image:', error);
+                    }
+
+                    // First image gets the Sl. No and description, subsequent images get empty cells
+                    const isFirst = i === 0;
+
+                    snapshotDataRows.push(
                         new TableRow({
                             children: [
                                 new TableCell({
                                     children: [
                                         new Paragraph({
-                                            children: [
-                                                new ImageRun({
-                                                    type: 'image/png',
-                                                    data: sigData,
-                                                    transformation: { width: Math.round(finalWidth), height: Math.round(finalHeight) },
-                                                    altText: {
-                                                        title: "Signature",
-                                                        description: "Authorized signature for audit report"
-                                                    },
-                                                }),
-                                            ],
-                                            alignment: AlignmentType.LEFT,
-                                        }),
+                                            children: [new TextRun({ text: isFirst ? slNo.toString() : "", size: 24, color: "374151" })],
+                                            alignment: AlignmentType.CENTER
+                                        })
                                     ],
-                                    width: { size: 9000, type: WidthType.DXA },
+                                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                                    borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
                                 }),
-                            ],
-                        }),
-                    ],
-                });
+                                new TableCell({
+                                    children: [imageContent],
+                                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                                    borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                                }),
+                                new TableCell({
+                                    children: [
+                                        new Paragraph({
+                                            children: [new TextRun({ text: isFirst ? description : "", size: 22, color: "374151" })]
+                                        })
+                                    ],
+                                    margins: { top: 100, bottom: 100, left: 150, right: 100 },
+                                    borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                                })
+                            ]
+                        })
+                    );
+                }
+                slNo++;
             }
-        } catch (err) {
-            console.warn("Error processing signature", err);
         }
+
+        // Add the snapshots table
+        documentChildren.push(
+            new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: {
+                    top: { style: BorderStyle.NONE },
+                    bottom: { style: BorderStyle.NONE },
+                    left: { style: BorderStyle.NONE },
+                    right: { style: BorderStyle.NONE },
+                    insideVertical: { style: BorderStyle.NONE }
+                },
+                rows: [snapshotHeaderRow, ...snapshotDataRows]
+            })
+        );
     }
 
-
-
-
-    // --- Header Construction ---
-
-    // Function to create a fresh Logos Row (prevents shared reference issues in DOCX)
-    const createLogosRow = async () => {
-        let leftLogoChild = new TextRun("");
-        if (clientLogoUrl) {
-            const logoData = await fetchImage(clientLogoUrl);
-            if (logoData) {
-                leftLogoChild = new ImageRun({
-                    type: 'image/png',
-                    data: logoData,
-                    transformation: { width: Math.round(100), height: Math.round(100) },
-                    altText: {
-                        title: "Client Logo",
-                        description: "Client organization logo"
-                    },
-                });
-            }
-        }
-
-        let rightLogoChild = new TextRun("");
-        if (sustLogoUrl) {
-            const sustLogoData = await fetchImage(sustLogoUrl);
-            if (sustLogoData) {
-                rightLogoChild = new ImageRun({
-                    type: 'image/png',
-                    data: sustLogoData,
-                    transformation: { width: Math.round(100), height: Math.round(100) },
-                    altText: {
-                        title: "Sustenergy Logo",
-                        description: "Sustenergy Foundation logo"
-                    },
-                });
-            }
-        }
-
-        return new TableRow({
-            children: [
-                new TableCell({
-                    children: [new Paragraph({ children: [leftLogoChild], alignment: AlignmentType.LEFT })],
-                    width: { size: 4500, type: WidthType.DXA },
-                    verticalAlign: "center",
-                }),
-                new TableCell({
-                    children: [new Paragraph({ children: [rightLogoChild], alignment: AlignmentType.RIGHT })],
-                    width: { size: 4500, type: WidthType.DXA },
-                    verticalAlign: "center",
-                }),
-            ],
-        });
-    };
-
-    // 2. Title & Details Row (First Page Only)
-    const titleRow = new TableRow({
-        children: [
-            new TableCell({
+    // ========== POWER PARAMETERS ==========
+    if (powerParameters) {
+        documentChildren.push(
+            new Paragraph({
                 children: [
-                    new Paragraph({
-                        text: "ELECTRICAL SAFETY AUDIT REPORT",
-                        heading: HeadingLevel.HEADING_1,
-                        alignment: AlignmentType.CENTER,
-                        spacing: { before: 100, after: 100 },
+                    new BookmarkStart("section_power"),
+                    new TextRun({
+                        text: "4.0 Power Parameters",
+                        bold: true,
+                        size: 32,
+                        color: "F59E0B"
                     }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "BRANCH: ", bold: true }),
-                            new TextRun(branchName || "-"),
-                        ],
-                        alignment: AlignmentType.CENTER,
-                    }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "BRANCH CODE: ", bold: true }),
-                            new TextRun(branchCode || "-"),
-                        ],
-                        alignment: AlignmentType.CENTER,
-                    }),
+                    new BookmarkEnd("section_power")
                 ],
-                columnSpan: 2,
-                width: { size: 9000, type: WidthType.DXA },
-                verticalAlign: "center",
-            }),
-        ],
-    });
+                spacing: { before: 400, after: 200 }
+            })
+        );
 
-    // Helper to create the boxed table structure - FLATTENED for Mobile Compatibility
-    const createBoxedHeader = (rows) => {
-        return new Table({
-            layout: TableLayoutType.FIXED,
-            width: { size: 9000, type: WidthType.DXA },
-            columnWidths: [4500, 4500], // CRITICAL: Explicit column widths for FIXED layout
-            borders: {
-                top: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
-                bottom: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
-                left: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
-                right: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
-                insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
-            },
-            rows: rows,
-        });
-    };
+        const pp = powerParameters;
+        const powerRows = [
+            createDataRow(["Parameter", "Test Point", "Value", "Remarks"], true),
+            createDataRow(["Line Voltage", "RY", pp.lineVoltage?.ry || "", ""]),
+            createDataRow(["", "YB", pp.lineVoltage?.yb || "", ""]),
+            createDataRow(["", "BR", pp.lineVoltage?.br || "", ""]),
+            createDataRow(["Phase Voltage", "R-N", pp.phaseVoltage?.rn || "", ""]),
+            createDataRow(["", "Y-N", pp.phaseVoltage?.yn || "", ""]),
+            createDataRow(["", "B-N", pp.phaseVoltage?.bn || "", ""]),
+            createDataRow(["Neutral to Earth", "N-E", pp.neutralEarth?.ne || "", ""]),
+            createDataRow(["Current", "R", pp.current?.r || "", ""]),
+            createDataRow(["", "Y", pp.current?.y || "", ""]),
+            createDataRow(["", "B", pp.current?.b || "", ""]),
+            createDataRow(["", "N", pp.current?.n || "", ""]),
+            createDataRow(["Frequency", "", pp.frequency || "", ""]),
+            createDataRow(["Power Factor", "", pp.powerFactor || "", ""])
+        ];
 
-    const firstPageTable = createBoxedHeader([await createLogosRow(), titleRow]);
-    const defaultPageTable = createBoxedHeader([await createLogosRow()]);
+        documentChildren.push(
+            new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: powerRows
+            })
+        );
+    }
 
-    // --- Audit Details Section ---
+    // ========== CONNECTED LOAD ==========
+    if (connectedLoad && connectedLoad.length > 0) {
+        documentChildren.push(
+            new Paragraph({
+                children: [
+                    new BookmarkStart("section_load"),
+                    new TextRun({
+                        text: "5.0 Connected Load Detail",
+                        bold: true,
+                        size: 32,
+                        color: "EF4444"
+                    }),
+                    new BookmarkEnd("section_load")
+                ],
+                spacing: { before: 400, after: 200 }
+            })
+        );
 
-    // Title outside the table
-    const auditReportTitle = new Paragraph({
-        text: "Electrical Audit Report",
-        heading: HeadingLevel.HEADING_1,
-        alignment: AlignmentType.LEFT,
-        spacing: { before: 400, after: 200 },
-    });
+        const loadRows = [
+            createDataRow(["Sl. No", "Type of Load", "Power (W)", "Qty", "Sub Total (KW)"], true),
+            ...connectedLoad.map((load, index) =>
+                createDataRow([index + 1, load.type, load.power, load.qty, load.subTotal])
+            )
+        ];
 
-    // 2-Column Details Table with Shading
-    const detailsRow = (label, value, shade = false) => {
-        const shadeConfig = shade ? { fill: "D9E2F3", type: ShadingType.CLEAR, color: "auto" } : undefined;
-        return new TableRow({
-            children: [
-                new TableCell({
-                    children: [new Paragraph({ children: [new TextRun({ text: label, bold: true })] })],
-                    shading: shadeConfig,
-                    width: { size: 3000, type: WidthType.DXA }, // Fixed 3000 DXA (~5.3cm)
-                }),
-                new TableCell({
-                    children: [new Paragraph({ children: [new TextRun({ text: value || "-" })] })],
-                    shading: shadeConfig,
-                    width: { size: 6000, type: WidthType.DXA }, // Fixed 6000 DXA (~10.6cm)
-                }),
-            ],
-        });
-    };
+        // Calculate total
+        const totalLoad = connectedLoad.reduce((acc, curr) => acc + (parseFloat(curr.subTotal) || 0), 0);
+        loadRows.push(createDataRow(["", "Connected load in KW", "", "", totalLoad.toFixed(2)], true));
 
-    const auditDetailsTable = new Table({
-        layout: TableLayoutType.FIXED,
-        width: { size: 9000, type: WidthType.DXA },
-        columnWidths: [3000, 6000], // CRITICAL: Defines the grid columns
-        borders: {
-            top: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
-            bottom: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
-            left: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
-            right: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
-            insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
-            insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "FFFFFF" },
-        },
-        rows: [
-            detailsRow("Reference no", refNo, true),
-            detailsRow("Dated", date, false),
-            detailsRow("Inspection date", inspectionDate, true),
-            detailsRow("Client", client, false),
-        ],
-    });
+        documentChildren.push(
+            new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: loadRows
+            })
+        );
+    }
 
-    // --- Content Sections with Bookmarks ---
+    // ========== CONCLUSIONS ==========
+    if (conclusions && conclusions.length > 0) {
+        documentChildren.push(
+            new Paragraph({
+                children: [
+                    new BookmarkStart("section_conclusions"),
+                    new TextRun({
+                        text: "6.0 Conclusions",
+                        bold: true,
+                        size: 32,
+                        color: "6366F1"
+                    }),
+                    new BookmarkEnd("section_conclusions")
+                ],
+                spacing: { before: 400, after: 200 }
+            })
+        );
 
-    // 3. General Observations
-    const obsSection = [
-        new Paragraph({
-            children: [
-                new BookmarkStart("bookmark_obs"),
-                new TextRun("1.0 Audit - General observations"),
-                new BookmarkEnd("bookmark_obs"),
-            ],
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 400, after: 200 },
-        }),
-        new Paragraph({
-            text: generalObservations,
-            spacing: { after: 200 },
-        }),
-    ];
-
-    // 4. Snapshots
-    // 4. Snapshots (Grouped Logic)
-    const snapshotRows = [];
-    let slNo = 1;
-
-    for (const group of snapshots) {
-        // If group has no images but has description
-        if ((!group.images || group.images.length === 0) && group.description) {
-            snapshotRows.push(
-                new TableRow({
+        conclusions.forEach(conclusion => {
+            documentChildren.push(
+                new Paragraph({
                     children: [
-                        new TableCell({ children: [new Paragraph(slNo.toString())] }),
-                        new TableCell({ children: [new Paragraph("No Image")] }),
-                        new TableCell({ children: [new Paragraph(group.description)] }),
+                        new TextRun({
+                            text: `• ${conclusion}`,
+                            size: 24,
+                            color: "374151"
+                        })
                     ],
+                    spacing: { after: 100 }
                 })
             );
-            slNo++;
-            continue;
-        }
+        });
+    }
 
-        // Iterate through images in the group
-        if (group.images && group.images.length > 0) {
-            for (let i = 0; i < group.images.length; i++) {
-                const imgUrl = group.images[i];
-                let imageChild = new Paragraph("Error Loading Image");
+    // ========== SIGNATORY SECTION ==========
+    documentChildren.push(
+        new Paragraph({
+            children: [
+                new TextRun({
+                    text: "For Sustenergy Foundation",
+                    bold: true,
+                    size: 24,
+                    color: "1F2937"
+                })
+            ],
+            spacing: { before: 600, after: 200 }
+        })
+    );
 
-                const imageData = await fetchImage(imgUrl);
-                if (imageData) {
-                    imageChild = new Paragraph({
+    // Add signature image
+    if (signature) {
+        try {
+            const sigBytes = await convertImageToBytes(signature);
+            if (sigBytes) {
+                documentChildren.push(
+                    new Paragraph({
                         children: [
                             new ImageRun({
-                                type: 'image/png',
-                                data: imageData,
+                                data: sigBytes,
                                 transformation: {
-                                    width: 300,
-                                    height: 200,
+                                    width: 150,
+                                    height: 75
                                 },
-                                altText: {
-                                    title: `Snapshot ${slNo}`,
-                                    description: group.description || "Electrical installation snapshot"
-                                },
-                            }),
+                                type: 'png'
+                            })
                         ],
-                    });
-                }
-
-                // First image gets the description and Sl No. Subsequent images in the same group get empty/ditto.
-                const isFirst = i === 0;
-
-                snapshotRows.push(
-                    new TableRow({
-                        children: [
-                            new TableCell({ children: [new Paragraph(isFirst ? slNo.toString() : "")] }),
-                            new TableCell({ children: [imageChild] }),
-                            new TableCell({ children: [new Paragraph(isFirst ? group.description : "")] }),
-                        ],
+                        spacing: { after: 100 }
                     })
                 );
             }
-            slNo++;
+        } catch (error) {
+            console.error('Error processing signature:', error);
         }
     }
 
-    const snapshotTable = new Table({
-        layout: TableLayoutType.FIXED,
-        width: { size: 9000, type: WidthType.DXA },
-        columnWidths: [1000, 5000, 3000],
-        rows: [
-            new TableRow({
-                children: [
-                    createCell("Sl. No", true),
-                    createCell("Image", true),
-                    createCell("Description", true),
-                ],
-            }),
-            ...snapshotRows
-        ],
-    });
-
-    const snapshotSection = [
+    // Signatory details
+    documentChildren.push(
         new Paragraph({
-            children: [
-                new BookmarkStart("bookmark_snap"),
-                new TextRun("2.0 Snapshots of Electrical Installation"),
-                new BookmarkEnd("bookmark_snap"),
-            ],
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 400, after: 200 },
+            children: [new TextRun({ text: "Jayakumar.R", bold: true, size: 24 })],
+            spacing: { after: 50 }
         }),
-        snapshotTable,
-    ];
-
-    // 5. Power Parameters
-    const pp = powerParameters;
-    const powerTable = new Table({
-        layout: TableLayoutType.FIXED,
-        width: { size: 9000, type: WidthType.DXA },
-        columnWidths: [2500, 1500, 2500, 2500],
-        rows: [
-            new TableRow({ children: [createCell("Parameter", true), createCell("Test Point", true), createCell("Value", true), createCell("Remarks", true)] }),
-            // Line Voltage
-            new TableRow({ children: [createCell("Line Voltage"), createCell("RY"), createCell(pp.lineVoltage.ry), createCell("")] }),
-            new TableRow({ children: [createCell(""), createCell("YB"), createCell(pp.lineVoltage.yb), createCell("")] }),
-            new TableRow({ children: [createCell(""), createCell("BR"), createCell(pp.lineVoltage.br), createCell("")] }),
-            // Phase Voltage
-            new TableRow({ children: [createCell("Phase Voltage"), createCell("R-N"), createCell(pp.phaseVoltage.rn), createCell("")] }),
-            new TableRow({ children: [createCell(""), createCell("Y-N"), createCell(pp.phaseVoltage.yn), createCell("")] }),
-            new TableRow({ children: [createCell(""), createCell("B-N"), createCell(pp.phaseVoltage.bn), createCell("")] }),
-            // Neutral to Earth
-            new TableRow({ children: [createCell("Neutral to Earth"), createCell("N-E"), createCell(pp.neutralEarth.ne), createCell("")] }),
-            // Current
-            new TableRow({ children: [createCell("Current"), createCell("R"), createCell(pp.current.r), createCell("")] }),
-            new TableRow({ children: [createCell(""), createCell("Y"), createCell(pp.current.y), createCell("")] }),
-            new TableRow({ children: [createCell(""), createCell("B"), createCell(pp.current.b), createCell("")] }),
-            new TableRow({ children: [createCell(""), createCell("N"), createCell(pp.current.n), createCell("")] }),
-            // Freq & PF
-            new TableRow({ children: [createCell("Frequency"), createCell(""), createCell(pp.frequency), createCell("")] }),
-            new TableRow({ children: [createCell("Power factor"), createCell(""), createCell(pp.powerFactor), createCell("")] }),
-        ],
-    });
-
-    const powerSection = [
         new Paragraph({
-            children: [
-                new BookmarkStart("bookmark_power"),
-                new TextRun("3.0 Power Parameters"),
-                new BookmarkEnd("bookmark_power"),
-            ],
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 400, after: 200 },
+            children: [new TextRun({ text: "Principal Consultant.", size: 22, color: "4B5563" })],
+            spacing: { after: 50 }
         }),
-        powerTable,
-    ];
-
-    // 6. Connected Load
-    const loadRows = connectedLoad.map((load, index) => (
-        new TableRow({
-            children: [
-                createCell((index + 1).toString()),
-                createCell(load.type),
-                createCell(load.power),
-                createCell(load.qty),
-                createCell(load.subTotal),
-            ],
+        new Paragraph({
+            children: [new TextRun({ text: "Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India", size: 20, color: "6B7280" })],
+            spacing: { after: 50 }
+        }),
+        new Paragraph({
+            children: [new TextRun({ text: "Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State", size: 20, color: "6B7280" })],
+            spacing: { after: 50 }
+        }),
+        new Paragraph({
+            children: [new TextRun({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", size: 20, color: "6B7280" })],
+            spacing: { after: 200 }
         })
-    ));
+    );
 
-    const totalLoad = connectedLoad.reduce((acc, curr) => acc + (parseFloat(curr.subTotal) || 0), 0);
-
-    const loadTable = new Table({
-        layout: TableLayoutType.FIXED,
-        width: { size: 9000, type: WidthType.DXA },
-        columnWidths: [700, 3800, 1500, 1000, 2000],
-        rows: [
-            new TableRow({ children: [createCell("Sl. No", true), createCell("Type of Load", true), createCell("Power (W)", true), createCell("Quantity (Nos)", true), createCell("Sub Total (KW)", true)] }),
-            ...loadRows,
-            new TableRow({ children: [createCell(""), createCell("Connected load in KW", true), createCell(""), createCell(""), createCell(totalLoad.toFixed(2), true)] }),
-        ],
-    });
-
-    const loadSection = [
+    // ========== FOOTER AUTO-GENERATED NOTE ==========
+    documentChildren.push(
         new Paragraph({
             children: [
-                new BookmarkStart("bookmark_load"),
-                new TextRun("4.0 Connected Load Detail"),
-                new BookmarkEnd("bookmark_load"),
+                new TextRun({
+                    text: "This document was generated automatically.",
+                    italics: true,
+                    size: 20,
+                    color: "9CA3AF"
+                })
             ],
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 400, after: 200 },
-        }),
-        loadTable,
-    ];
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 400 }
+        })
+    );
 
-    // 7. Conclusions
-    const conclusionItems = conclusions.map(c => new Paragraph({
-        text: c,
-        bullet: { level: 0 },
-    }));
+    // ========== LOAD HEADER LOGOS ==========
+    // Load client logo for header (left side)
+    let clientLogoBytes = null;
+    if (logo) {
+        try {
+            clientLogoBytes = await convertImageToBytes(logo);
+        } catch (error) {
+            console.error('Error loading client logo for header:', error);
+        }
+    }
 
-    const conclusionSection = [
-        new Paragraph({
+    // Load Sustenergy logo for header (right side)
+    let sustLogoBytes = null;
+    try {
+        const sustLogoUrl = window.location.origin + "/sustenergy_logo.png";
+        sustLogoBytes = await convertImageToBytes(sustLogoUrl);
+    } catch (error) {
+        console.error('Error loading Sustenergy logo:', error);
+    }
+
+    // Create header with both logos in a table (client left, Sustenergy right)
+    const headerChildren = [];
+
+    // Build left logo cell content
+    let leftLogoContent = new Paragraph({ text: "" });
+    if (clientLogoBytes) {
+        leftLogoContent = new Paragraph({
             children: [
-                new BookmarkStart("bookmark_conc"),
-                new TextRun("5.0 Conclusions"),
-                new BookmarkEnd("bookmark_conc"),
+                new ImageRun({
+                    data: clientLogoBytes,
+                    transformation: {
+                        width: 100,
+                        height: 60
+                    },
+                    type: 'png'
+                })
             ],
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 400, after: 200 },
-        }),
-        ...conclusionItems,
-    ];
+            alignment: AlignmentType.LEFT
+        });
+    }
 
-    // 8. Footer / Signatory
-    const footerSection = [
-        new Paragraph({ text: "", spacing: { before: 800 } }),
-        new Paragraph({ text: "For Sustenergy Foundation", bold: true }),
-        signatureRun,
-        new Paragraph({ text: "Jayakumar.R", bold: true }),
-        new Paragraph({ text: "Principal Consultant." }),
-        new Paragraph({ text: "Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India" }),
-        new Paragraph({ text: "Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State" }),
-        new Paragraph({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden" }),
-        new Paragraph({ text: "", spacing: { before: 600 } }),
-        // Footer Image removed as per user request
-    ];
+    // Build right logo cell content
+    let rightLogoContent = new Paragraph({ text: "" });
+    if (sustLogoBytes) {
+        rightLogoContent = new Paragraph({
+            children: [
+                new ImageRun({
+                    data: sustLogoBytes,
+                    transformation: {
+                        width: 100,
+                        height: 60
+                    },
+                    type: 'png'
+                })
+            ],
+            alignment: AlignmentType.RIGHT
+        });
+    }
 
-    // --- TOC Page Construction (Manual Boxed) ---
-    const tocRows = [
-        { sl: "1", desc: "1.0 Audit - General observations", link: "bookmark_obs" },
-        { sl: "2", desc: "2.0 Snapshots of Electrical Installation", link: "bookmark_snap" },
-        { sl: "3", desc: "3.0 Power Parameters", link: "bookmark_power" },
-        { sl: "4", desc: "4.0 Connected Load Detail", link: "bookmark_load" },
-        { sl: "5", desc: "5.0 Conclusions", link: "bookmark_conc" },
-    ];
-
-    const tocTable = new Table({
-        layout: TableLayoutType.FIXED,
-        width: { size: 9000, type: WidthType.DXA },
-        columnWidths: [1000, 6000, 2000],
+    // Create header table with logos
+    const headerTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+            insideHorizontal: { style: BorderStyle.NONE },
+            insideVertical: { style: BorderStyle.NONE }
+        },
         rows: [
-            // Header
             new TableRow({
                 children: [
-                    createCell("Sl. No", true),
-                    createCell("Description", true),
-                    createCell("Page No", true),
-                ],
-            }),
-            // Links
-            ...tocRows.map(item => new TableRow({
-                children: [
-                    new TableCell({ children: [new Paragraph({ text: item.sl, alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph(item.desc)] }),
                     new TableCell({
-                        children: [
-                            new Paragraph({
-                                children: [
-                                    new SimpleField(`PAGEREF ${item.link}`),
-                                ],
-                                alignment: AlignmentType.CENTER,
-                            })
-                        ],
+                        children: [leftLogoContent],
+                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        borders: {
+                            top: { style: BorderStyle.NONE },
+                            bottom: { style: BorderStyle.NONE },
+                            left: { style: BorderStyle.NONE },
+                            right: { style: BorderStyle.NONE }
+                        }
                     }),
-                ],
-            }))
-        ],
+                    new TableCell({
+                        children: [rightLogoContent],
+                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        borders: {
+                            top: { style: BorderStyle.NONE },
+                            bottom: { style: BorderStyle.NONE },
+                            left: { style: BorderStyle.NONE },
+                            right: { style: BorderStyle.NONE }
+                        }
+                    })
+                ]
+            })
+        ]
     });
 
-    const tocSection = [
+    headerChildren.push(headerTable);
+
+    // Create footer with page numbers
+    const footerChildren = [
         new Paragraph({
-            text: "Table of Contents",
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 400, after: 400 },
-            pageBreakBefore: false,
-            color: "2F5496" // Blue color for TOC Title
-        }),
-        tocTable,
-        new Paragraph({ text: "", pageBreakBefore: true }), // Break AFTER TOC to start content
+            children: [
+                new TextRun({
+                    text: "Electrical Safety Audit Report",
+                    size: 20,
+                    color: "666666"
+                }),
+                new TextRun({
+                    text: "    |    Page ",
+                    size: 20,
+                    color: "666666"
+                }),
+                new TextRun({
+                    children: [PageNumber.CURRENT],
+                    size: 20,
+                    color: "666666"
+                }),
+                new TextRun({
+                    text: " of ",
+                    size: 20,
+                    color: "666666"
+                }),
+                new TextRun({
+                    children: [PageNumber.TOTAL_PAGES],
+                    size: 20,
+                    color: "666666"
+                })
+            ],
+            alignment: AlignmentType.CENTER
+        })
     ];
 
-    console.log("Generating document with data:", data);
-
-    try {
-        const doc = new Document({
-            features: {
-                updateFields: true,
+    // ========== CREATE DOCUMENT ==========
+    const doc = new Document({
+        sections: [{
+            properties: {},
+            headers: {
+                default: new Header({
+                    children: headerChildren
+                })
             },
-            sections: [{
-                properties: {
-                    titlePage: true, // IMPORTANT: Enables distinct first page header
-                    page: {
-                        margin: {
-                            top: 1440, // 1 inch in Twips (approx 2.5cm)
-                            bottom: 1440,
-                            left: 1440,
-                            right: 1440,
-                        },
-                    },
-                },
-                headers: {
-                    first: new Header({
-                        children: [firstPageTable],
-                    }),
-                    default: new Header({
-                        children: [defaultPageTable],
-                    }),
-                },
-                footers: {
-                    default: new Footer({
-                        children: [
-                            new Table({
-                                layout: TableLayoutType.FIXED,
-                                width: { size: 9000, type: WidthType.DXA },
-                                columnWidths: [4500, 4500],
-                                borders: {
-                                    top: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                                    bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                                    left: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                                    right: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                                    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                                    insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
-                                },
-                                rows: [
-                                    new TableRow({
-                                        children: [
-                                            new TableCell({
-                                                children: [new Paragraph("Electrical Audit Report")],
-                                                verticalAlign: "center",
-                                                width: { size: 4500, type: WidthType.DXA },
-                                                borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "auto" } },
-                                            }),
-                                            new TableCell({
-                                                children: [
-                                                    new Paragraph({
-                                                        alignment: AlignmentType.RIGHT,
-                                                        children: [
-                                                            new TextRun({
-                                                                children: [PageNumber.CURRENT],
-                                                            }),
-                                                        ],
-                                                    }),
-                                                ],
-                                                verticalAlign: "center",
-                                                width: { size: 4500, type: WidthType.DXA },
-                                                borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "auto" } },
-                                            }),
-                                        ],
-                                    }),
-                                ],
-                            })
-                        ],
-                    }),
-                },
-                children: [
-                    // Page 1 Content (Empty, header covers it)
-                    new Paragraph({ text: "", spacing: { after: 0 } }),
-                    new PageBreak(),
+            footers: {
+                default: new Footer({
+                    children: footerChildren
+                })
+            },
+            children: documentChildren
+        }]
+    });
 
-                    // Page 2: Audit Details + TOC
-                    auditReportTitle,
-                    auditDetailsTable,
-                    new Paragraph({ text: "", spacing: { after: 200 } }), // Gap
-                    ...tocSection,
-                    // Note: tocSection now ends with a PageBreak
-
-                    // Page 3+: Main Content
-                    // Note: auditDetails was removed from here, as it's now on Page 2
-                    ...obsSection,
-                    ...snapshotSection,
-                    ...powerSection,
-                    ...loadSection,
-                    ...conclusionSection,
-                    ...footerSection
-                ],
-            }],
-        });
-
-        const buffer = await Packer.toBuffer(doc);
-        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-
+    // Generate and save file
+    try {
+        const blob = await Packer.toBlob(doc);
         const safeBranchName = (branchName || "Draft").replace(/[^a-z0-9\s-_]/gi, '').trim().replace(/\s+/g, '_');
-        const fileName = "Audit_Report_" + safeBranchName + ".docx";
+        const fileName = `Audit_Report_${safeBranchName}.docx`;
 
         console.log("Saving file:", fileName);
-        saveAs(blob, fileName);
+        downloadFile(blob, fileName);
         console.log("File saved successfully");
     } catch (error) {
         console.error("Error generating document:", error);
         alert("Error generating document. Please check console for details.");
     }
 };
-

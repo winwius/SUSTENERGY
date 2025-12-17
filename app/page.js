@@ -65,6 +65,7 @@ export default function Home() {
         },
         connectedLoad: [],
         conclusions: [""],
+        majorHighlights: [""],
         signature: null,
         useDefaultSignature: true,
         logo: null,
@@ -294,6 +295,29 @@ export default function Home() {
         });
     };
 
+    // Major Highlights
+    const addHighlight = () => {
+        setFormData((prev) => ({
+            ...prev,
+            majorHighlights: [...prev.majorHighlights, ""],
+        }));
+    };
+
+    const removeHighlight = (index) => {
+        setFormData((prev) => ({
+            ...prev,
+            majorHighlights: prev.majorHighlights.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleHighlightChange = (value, index) => {
+        setFormData((prev) => {
+            const newHighlights = [...prev.majorHighlights];
+            newHighlights[index] = value;
+            return { ...prev, majorHighlights: newHighlights };
+        });
+    };
+
     return (
         <main className="min-h-screen p-6 md:p-12 lg:p-16 pb-32 max-w-4xl mx-auto">
             <header className="mb-12 text-center pt-8">
@@ -374,6 +398,49 @@ export default function Home() {
                         value={formData.generalObservations}
                         onChange={(e) => handleInputChange(e, null, "generalObservations")}
                     />
+                </CollapsibleCard>
+
+                {/* Major Highlights - Yellow/Amber Theme */}
+                <CollapsibleCard
+                    title="Major Highlights"
+                    icon={Zap}
+                    theme="orange"
+                    bodyClassName="card-body space-y-4"
+                    headerContent={({ expand }) =>
+                        formData.majorHighlights.length === 0 && (
+                            <button
+                                onClick={(e) => {
+                                    expand(e);
+                                    addHighlight();
+                                }}
+                                className="btn-add flex items-center gap-2"
+                            >
+                                <Plus size={16} /> Add First Highlight
+                            </button>
+                        )
+                    }
+                >
+                    {formData.majorHighlights.map((highlight, index) => (
+                        <div key={index} className="flex gap-3 items-start">
+                            <span className="text-orange-500 pt-3 text-lg">•</span>
+                            <textarea
+                                className="input-field min-h-[60px] resize-y"
+                                value={highlight}
+                                onChange={(e) => handleHighlightChange(e.target.value, index)}
+                                placeholder="Enter a major highlight..."
+                            />
+                            <button onClick={() => removeHighlight(index)} className="text-slate-400 hover:text-red-500 p-3 transition-colors">
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    ))}
+                    {formData.majorHighlights.length > 0 && (
+                        <div className="flex justify-center pt-4">
+                            <button onClick={addHighlight} className="btn-add flex items-center gap-2 w-full md:w-auto justify-center">
+                                <Plus size={16} /> Add Another Highlight
+                            </button>
+                        </div>
+                    )}
                 </CollapsibleCard>
 
                 {/* 3. Snapshots - Purple Theme */}
