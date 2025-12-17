@@ -98,7 +98,7 @@ export default function Home() {
     };
 
     // Helper: Resize image before storing
-    const resizeImage = (file) => {
+    const resizeImage = (file, mimeType = 'image/jpeg', quality = 0.8) => {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -127,7 +127,7 @@ export default function Home() {
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL(file.type));
+                    resolve(canvas.toDataURL(mimeType, quality));
                 };
             };
         });
@@ -156,7 +156,7 @@ export default function Home() {
         const newImages = [];
         for (const file of files) {
             if (file.size <= 20 * 1024 * 1024) {
-                const img = await resizeImage(file);
+                const img = await resizeImage(file, 'image/jpeg', 0.8);
                 newImages.push(img);
             }
         }
@@ -181,7 +181,7 @@ export default function Home() {
         const newImages = [];
         for (const file of files) {
             if (file.size <= 20 * 1024 * 1024) {
-                const img = await resizeImage(file);
+                const img = await resizeImage(file, 'image/jpeg', 0.8);
                 newImages.push(img);
             }
         }
@@ -228,18 +228,16 @@ export default function Home() {
 
 
     // Logo Upload
-    const handleLogoUpload = (e) => {
+    const handleLogoUpload = async (e) => {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 20 * 1024 * 1024) { // 20 MB Check
                 alert("File size exceeds 20MB limit.");
                 return;
             }
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData((prev) => ({ ...prev, logo: reader.result }));
-            };
-            reader.readAsDataURL(file);
+            // Use resizeImage to normalize to PNG (preserves transparency)
+            const logoData = await resizeImage(file, 'image/png', 1.0);
+            setFormData((prev) => ({ ...prev, logo: logoData }));
         }
     };
 
@@ -767,26 +765,25 @@ export default function Home() {
                                 {/* Custom File Input Button */}
                                 <div className="w-full">
                                     <label
-                                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-dashed border-slate-300 text-slate-600 text-sm font-medium transition-all ${formData.useDefaultSignature
-                                                ? 'opacity-50 cursor-not-allowed bg-slate-50'
-                                                : 'hover:bg-slate-50 hover:border-slate-400 cursor-pointer bg-white'
+                                        className={`btn-add flex items-center justify-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 px-6 py-2 cursor-pointer shadow-sm transition-all ${formData.useDefaultSignature
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : ''
                                             }`}
                                     >
-                                        <Upload size={16} />
+                                        <Upload size={18} />
                                         <span>Add a Custom Signature</span>
                                         <input
                                             type="file"
                                             accept="image/*"
                                             className="hidden"
+                                            style={{ display: 'none' }}
                                             disabled={formData.useDefaultSignature}
-                                            onChange={(e) => {
+                                            onChange={async (e) => {
                                                 const file = e.target.files[0];
                                                 if (file) {
-                                                    const reader = new FileReader();
-                                                    reader.onloadend = () => {
-                                                        setFormData({ ...formData, signature: reader.result });
-                                                    };
-                                                    reader.readAsDataURL(file);
+                                                    // Resize/Normalize to PNG for signature (transparency)
+                                                    const sigData = await resizeImage(file, 'image/png', 1.0);
+                                                    setFormData({ ...formData, signature: sigData });
                                                 }
                                             }}
                                         />

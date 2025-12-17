@@ -21,8 +21,9 @@ export const generateDocx = async (data) => {
 
     // Helper to create table cells
     const createCell = (text, bold = false) => {
+        const safeText = text !== null && text !== undefined ? String(text) : "-";
         return new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: text || "-", bold })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: safeText, bold })] })],
             verticalAlign: "center",
         });
     };
@@ -33,9 +34,33 @@ export const generateDocx = async (data) => {
             if (!url) return null;
             const response = await fetch(url);
             if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
-            const blob = await response.blob();
-            // Basic validation - check if it's actually an image or has size
+
+            let blob = await response.blob();
+
+            // Basic validation
             if (blob.size === 0 || blob.type.indexOf('text/html') !== -1) return null;
+
+            // Convert WebP or other unsupported types to PNG
+            if (blob.type === 'image/webp' || blob.type === 'image/gif' || blob.type === 'image/avif') {
+                try {
+                    blob = await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            canvas.toBlob((newBlob) => resolve(newBlob), 'image/png');
+                        };
+                        img.onerror = (e) => reject(e);
+                        img.src = URL.createObjectURL(blob);
+                    });
+                } catch (conversionError) {
+                    console.warn("Failed to convert image, using original", conversionError);
+                }
+            }
+
             const buffer = await blob.arrayBuffer();
             return new Uint8Array(buffer);
         } catch (error) {
@@ -83,10 +108,9 @@ export const generateDocx = async (data) => {
                 // Get dimensions to preserve aspect ratio
                 const dims = await getImageDimensions(signature);
 
-                // Calculate scale to fit within a reasonable box (e.g., max width 250, max height 100 - consistent with logo size)
-                // while preserving aspect ratio.
-                const maxWidth = 250;
-                const maxHeight = 100;
+                // Adjusted limits to fit within page width (approx 600px for 9000 DXA)
+                const maxWidth = 600;
+                const maxHeight = 300;
 
                 let finalWidth = dims.width;
                 let finalHeight = dims.height;
@@ -96,14 +120,20 @@ export const generateDocx = async (data) => {
                 const heightRatio = maxHeight / finalHeight;
 
                 // Use the smaller ratio to ensure it fits both dimensions (scaling up or down)
-                const scale = Math.min(widthRatio, heightRatio);
+                const scale = Math.min(widthRatio, heightRatio, 1); // Ensure we don't upscale indefinitely if not needed, but code below overwrites
 
-                finalWidth = finalWidth * scale;
-                finalHeight = finalHeight * scale;
+                // Correct logic: maintain aspect ratio but fit within box
+                if (finalWidth > maxWidth || finalHeight > maxHeight) {
+                    const scaleFactor = Math.min(maxWidth / finalWidth, maxHeight / finalHeight);
+                    finalWidth = finalWidth * scaleFactor;
+                    finalHeight = finalHeight * scaleFactor;
+                }
+
 
                 signatureRun = new Table({
                     layout: TableLayoutType.FIXED,
                     width: { size: 9000, type: WidthType.DXA },
+                    columnWidths: [9000], // FIXED: Added missing columnWidths
                     borders: {
                         top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
                         bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
