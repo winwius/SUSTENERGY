@@ -69,25 +69,20 @@ export const generateDocx = async (data) => {
         }
     };
 
+    // Helper to clone buffer to ensure unique references for every ImageRun
+    const cloneBuffer = (buffer) => {
+        if (!buffer) return null;
+        const newBuf = new Uint8Array(buffer.length);
+        newBuf.set(buffer);
+        return newBuf;
+    };
+
     // Process Client Logo
-    let logoImageRun = new TextRun("");
-    const logoData = await fetchImage(logo);
-    if (logoData) {
-        logoImageRun = new ImageRun({
-            data: logoData,
-            transformation: { width: 100, height: 100 },
-        });
-    }
+    // We fetch ONCE, but will clone later
+    const logoDataMaster = await fetchImage(logo);
 
     // Process Sustenergy Logo from public folder
-    let sustenergyLogoRun = new TextRun("");
-    const sustLogoData = await fetchImage(window.location.origin + "/sustenergy_logo.png");
-    if (sustLogoData) {
-        sustenergyLogoRun = new ImageRun({
-            data: sustLogoData,
-            transformation: { width: 100, height: 80 },
-        });
-    }
+    const sustLogoDataMaster = await fetchImage(window.location.origin + "/sustenergy_logo.png");
 
     // Helper to get image dimensions
     const getImageDimensions = (url) => {
@@ -120,9 +115,8 @@ export const generateDocx = async (data) => {
                 const heightRatio = maxHeight / finalHeight;
 
                 // Use the smaller ratio to ensure it fits both dimensions (scaling up or down)
-                const scale = Math.min(widthRatio, heightRatio, 1); // Ensure we don't upscale indefinitely if not needed, but code below overwrites
+                const scale = Math.min(widthRatio, heightRatio, 1);
 
-                // Correct logic: maintain aspect ratio but fit within box
                 if (finalWidth > maxWidth || finalHeight > maxHeight) {
                     const scaleFactor = Math.min(maxWidth / finalWidth, maxHeight / finalHeight);
                     finalWidth = finalWidth * scaleFactor;
@@ -133,14 +127,14 @@ export const generateDocx = async (data) => {
                 signatureRun = new Table({
                     layout: TableLayoutType.FIXED,
                     width: { size: 9000, type: WidthType.DXA },
-                    columnWidths: [9000], // FIXED: Added missing columnWidths
+                    columnWidths: [9000],
                     borders: {
-                        top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                        bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                        left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                        right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                        insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                        insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                        top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                        bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                        left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                        right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                        insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                        insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
                     },
                     rows: [
                         new TableRow({
@@ -150,7 +144,7 @@ export const generateDocx = async (data) => {
                                         new Paragraph({
                                             children: [
                                                 new ImageRun({
-                                                    data: sigData,
+                                                    data: cloneBuffer(sigData), // CLONE HERE
                                                     transformation: { width: finalWidth, height: finalHeight },
                                                 }),
                                             ],
@@ -174,21 +168,39 @@ export const generateDocx = async (data) => {
 
     // --- Header Construction ---
 
-    // 1. Logos Row (Shared)
-    const logosRow = new TableRow({
-        children: [
-            new TableCell({
-                children: [new Paragraph({ children: [logoImageRun], alignment: AlignmentType.LEFT })],
-                width: { size: 4500, type: WidthType.DXA },
-                verticalAlign: "center",
-            }),
-            new TableCell({
-                children: [new Paragraph({ children: [sustenergyLogoRun], alignment: AlignmentType.RIGHT })],
-                width: { size: 4500, type: WidthType.DXA },
-                verticalAlign: "center",
-            }),
-        ],
-    });
+    // Function to create a fresh Logos Row (prevents shared reference issues in DOCX)
+    const createLogosRow = () => {
+        let leftLogoChild = new TextRun("");
+        if (logoDataMaster) {
+            leftLogoChild = new ImageRun({
+                data: cloneBuffer(logoDataMaster), // Use Clone
+                transformation: { width: 100, height: 100 },
+            });
+        }
+
+        let rightLogoChild = new TextRun("");
+        if (sustLogoDataMaster) {
+            rightLogoChild = new ImageRun({
+                data: cloneBuffer(sustLogoDataMaster), // Use Clone
+                transformation: { width: 100, height: 80 },
+            });
+        }
+
+        return new TableRow({
+            children: [
+                new TableCell({
+                    children: [new Paragraph({ children: [leftLogoChild], alignment: AlignmentType.LEFT })],
+                    width: { size: 4500, type: WidthType.DXA },
+                    verticalAlign: "center",
+                }),
+                new TableCell({
+                    children: [new Paragraph({ children: [rightLogoChild], alignment: AlignmentType.RIGHT })],
+                    width: { size: 4500, type: WidthType.DXA },
+                    verticalAlign: "center",
+                }),
+            ],
+        });
+    };
 
     // 2. Title & Details Row (First Page Only)
     const titleRow = new TableRow({
@@ -234,15 +246,15 @@ export const generateDocx = async (data) => {
                 bottom: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
                 left: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
                 right: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0" },
-                insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
             },
             rows: rows,
         });
     };
 
-    const firstPageTable = createBoxedHeader([logosRow, titleRow]);
-    const defaultPageTable = createBoxedHeader([logosRow]);
+    const firstPageTable = createBoxedHeader([createLogosRow(), titleRow]);
+    const defaultPageTable = createBoxedHeader([createLogosRow()]);
 
     // --- Audit Details Section ---
 
@@ -344,7 +356,7 @@ export const generateDocx = async (data) => {
                     imageChild = new Paragraph({
                         children: [
                             new ImageRun({
-                                data: imageData,
+                                data: cloneBuffer(imageData), // Clone for safety
                                 transformation: {
                                     width: 300,
                                     height: 200,
@@ -581,10 +593,10 @@ export const generateDocx = async (data) => {
                     titlePage: true, // IMPORTANT: Enables distinct first page header
                     page: {
                         margin: {
-                            top: "2.5cm",
-                            bottom: "2.5cm",
-                            left: "2.5cm",
-                            right: "2.5cm",
+                            top: 1440, // 1 inch in Twips (approx 2.5cm)
+                            bottom: 1440,
+                            left: 1440,
+                            right: 1440,
                         },
                     },
                 },
@@ -602,14 +614,14 @@ export const generateDocx = async (data) => {
                             new Table({
                                 layout: TableLayoutType.FIXED,
                                 width: { size: 9000, type: WidthType.DXA },
-                                columnWidths: [4500, 4500], // CRITICAL: Explicit column widths for FIXED layout
+                                columnWidths: [4500, 4500],
                                 borders: {
-                                    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                                    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                                    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                                    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                                    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-                                    insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                    bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                    left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                    right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                    insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
                                 },
                                 rows: [
                                     new TableRow({
@@ -618,7 +630,7 @@ export const generateDocx = async (data) => {
                                                 children: [new Paragraph("Electrical Audit Report")],
                                                 verticalAlign: "center",
                                                 width: { size: 4500, type: WidthType.DXA },
-                                                borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } },
+                                                borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "auto" } },
                                             }),
                                             new TableCell({
                                                 children: [
@@ -633,7 +645,7 @@ export const generateDocx = async (data) => {
                                                 ],
                                                 verticalAlign: "center",
                                                 width: { size: 4500, type: WidthType.DXA },
-                                                borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } },
+                                                borders: { bottom: { style: BorderStyle.NONE, size: 0, color: "auto" } },
                                             }),
                                         ],
                                     }),

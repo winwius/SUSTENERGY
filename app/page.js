@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Download, Camera, FileText, Zap, Activity, CheckCircle, PenTool, Upload, X, ChevronDown, ChevronUp, Images } from "lucide-react";
+import { Plus, Trash2, Download, Camera, FileText, Zap, Activity, CheckCircle, PenTool, Upload, X, ChevronDown, ChevronUp, Images, FileType } from "lucide-react";
 import { generateDocx } from "./utils/generateDocx";
+import { generatePdf } from "./utils/generatePdf";
 
 function CollapsibleCard({ title, icon: Icon, theme, children, headerContent, bodyClassName = "card-body" }) {
     const [isOpen, setIsOpen] = useState(true);
@@ -434,7 +435,7 @@ export default function Home() {
                                                 >
                                                     <img
                                                         src={img}
-                                                        alt={`Snapshot ${imgIndex + 1}`}
+                                                        alt={`Snapshot ${imgIndex + 1} `}
                                                         className="w-full h-full object-contain rounded-lg"
                                                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                                     />
@@ -805,16 +806,28 @@ export default function Home() {
 
                 {/* Action Bar */}
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-slate-200 flex justify-center z-50 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
-                    <button
-                        onClick={() => generateDocx({
-                            ...formData,
-                            signature: formData.useDefaultSignature ? window.location.origin + "/default_signature.jpg" : formData.signature
-                        })}
-                        className="btn-primary flex items-center gap-3"
-                    >
-                        <Download size={24} />
-                        Generate Report
-                    </button>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => generateDocx({
+                                ...formData,
+                                signature: formData.useDefaultSignature ? window.location.origin + "/default_signature.jpg" : formData.signature
+                            })}
+                            className="btn-primary flex items-center gap-3"
+                        >
+                            <Download size={24} />
+                            Generate DOCX
+                        </button>
+                        <button
+                            onClick={() => generatePdf({
+                                ...formData,
+                                signature: formData.useDefaultSignature ? window.location.origin + "/default_signature.jpg" : formData.signature
+                            })}
+                            className="btn-pdf flex items-center gap-3"
+                        >
+                            <FileType size={24} />
+                            Generate PDF
+                        </button>
+                    </div>
                 </div>
             </div >
         </main >

@@ -314,3 +314,21 @@ th {
 .icon-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
+
+.btn-pdf {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  border: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+  transition: all 0.2s;
+}
+
+.btn-pdf:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
