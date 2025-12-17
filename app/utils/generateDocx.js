@@ -21,7 +21,8 @@ import {
     PageNumber,
     BookmarkStart,
     BookmarkEnd,
-    SimpleField
+    SimpleField,
+    TableLayoutType
 } from "docx";
 
 /**
@@ -75,7 +76,7 @@ async function convertImageToBytes(url) {
 }
 
 /**
- * Create a table row with label and value
+ * Create a table row with label and value (fixed DXA widths for Google Docs compatibility)
  */
 function createTableRow(label, value) {
     return new TableRow({
@@ -94,8 +95,8 @@ function createTableRow(label, value) {
                     })
                 ],
                 width: {
-                    size: 30,
-                    type: WidthType.PERCENTAGE
+                    size: 2800,
+                    type: WidthType.DXA
                 },
                 shading: {
                     fill: "F3F4F6"
@@ -120,8 +121,8 @@ function createTableRow(label, value) {
                     })
                 ],
                 width: {
-                    size: 70,
-                    type: WidthType.PERCENTAGE
+                    size: 6560,
+                    type: WidthType.DXA
                 },
                 margins: {
                     top: 100,
@@ -289,7 +290,9 @@ export const generateDocx = async (data) => {
     if (infoRows.length > 0) {
         documentChildren.push(
             new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
+                layout: TableLayoutType.FIXED,
+                width: { size: 9360, type: WidthType.DXA },
+                columnWidths: [2800, 6560],
                 rows: infoRows
             })
         );
@@ -321,7 +324,7 @@ export const generateDocx = async (data) => {
         { sl: "6", desc: "Conclusions", bookmark: "section_conclusions" }
     ];
 
-    // Create TOC header row with teal background
+    // Create TOC header row with teal background (fixed DXA widths for Google Docs)
     const tocHeaderRow = new TableRow({
         children: [
             new TableCell({
@@ -332,7 +335,7 @@ export const generateDocx = async (data) => {
                     })
                 ],
                 shading: { fill: "2DD4BF" },
-                width: { size: 15, type: WidthType.PERCENTAGE },
+                width: { size: 1400, type: WidthType.DXA },
                 margins: { top: 100, bottom: 100, left: 100, right: 100 }
             }),
             new TableCell({
@@ -342,7 +345,7 @@ export const generateDocx = async (data) => {
                     })
                 ],
                 shading: { fill: "2DD4BF" },
-                width: { size: 65, type: WidthType.PERCENTAGE },
+                width: { size: 6100, type: WidthType.DXA },
                 margins: { top: 100, bottom: 100, left: 150, right: 100 }
             }),
             new TableCell({
@@ -353,7 +356,7 @@ export const generateDocx = async (data) => {
                     })
                 ],
                 shading: { fill: "2DD4BF" },
-                width: { size: 20, type: WidthType.PERCENTAGE },
+                width: { size: 1860, type: WidthType.DXA },
                 margins: { top: 100, bottom: 100, left: 100, right: 100 }
             })
         ]
@@ -370,6 +373,7 @@ export const generateDocx = async (data) => {
                             alignment: AlignmentType.CENTER
                         })
                     ],
+                    width: { size: 1400, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 100, right: 100 },
                     borders: {
                         bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
@@ -381,6 +385,7 @@ export const generateDocx = async (data) => {
                             children: [new TextRun({ text: item.desc, size: 24, color: "374151" })]
                         })
                     ],
+                    width: { size: 6100, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 150, right: 100 },
                     borders: {
                         bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
@@ -393,6 +398,7 @@ export const generateDocx = async (data) => {
                             alignment: AlignmentType.CENTER
                         })
                     ],
+                    width: { size: 1860, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 100, right: 100 },
                     borders: {
                         bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
@@ -404,7 +410,9 @@ export const generateDocx = async (data) => {
 
     documentChildren.push(
         new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
+            layout: TableLayoutType.FIXED,
+            width: { size: 9360, type: WidthType.DXA },
+            columnWidths: [1400, 6100, 1860],
             borders: {
                 top: { style: BorderStyle.NONE },
                 bottom: { style: BorderStyle.NONE },
@@ -501,7 +509,7 @@ export const generateDocx = async (data) => {
             })
         );
 
-        // Create snapshot table header row with teal background
+        // Create snapshot table header row with teal background (fixed DXA widths)
         const snapshotHeaderRow = new TableRow({
             children: [
                 new TableCell({
@@ -512,7 +520,7 @@ export const generateDocx = async (data) => {
                         })
                     ],
                     shading: { fill: "2DD4BF" },
-                    width: { size: 10, type: WidthType.PERCENTAGE },
+                    width: { size: 936, type: WidthType.DXA },
                     margins: { top: 100, bottom: 100, left: 100, right: 100 }
                 }),
                 new TableCell({
@@ -522,7 +530,7 @@ export const generateDocx = async (data) => {
                         })
                     ],
                     shading: { fill: "2DD4BF" },
-                    width: { size: 40, type: WidthType.PERCENTAGE },
+                    width: { size: 3744, type: WidthType.DXA },
                     margins: { top: 100, bottom: 100, left: 150, right: 100 }
                 }),
                 new TableCell({
@@ -532,7 +540,7 @@ export const generateDocx = async (data) => {
                         })
                     ],
                     shading: { fill: "2DD4BF" },
-                    width: { size: 50, type: WidthType.PERCENTAGE },
+                    width: { size: 4680, type: WidthType.DXA },
                     margins: { top: 100, bottom: 100, left: 150, right: 100 }
                 })
             ]
@@ -653,7 +661,9 @@ export const generateDocx = async (data) => {
         // Add the snapshots table
         documentChildren.push(
             new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
+                layout: TableLayoutType.FIXED,
+                width: { size: 9360, type: WidthType.DXA },
+                columnWidths: [936, 3744, 4680],
                 borders: {
                     top: { style: BorderStyle.NONE },
                     bottom: { style: BorderStyle.NONE },
@@ -704,7 +714,9 @@ export const generateDocx = async (data) => {
 
         documentChildren.push(
             new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
+                layout: TableLayoutType.FIXED,
+                width: { size: 9360, type: WidthType.DXA },
+                columnWidths: [2340, 2340, 2340, 2340],
                 rows: powerRows
             })
         );
@@ -741,7 +753,9 @@ export const generateDocx = async (data) => {
 
         documentChildren.push(
             new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
+                layout: TableLayoutType.FIXED,
+                width: { size: 9360, type: WidthType.DXA },
+                columnWidths: [936, 3276, 1872, 936, 2340],
                 rows: loadRows
             })
         );
@@ -921,9 +935,11 @@ export const generateDocx = async (data) => {
         });
     }
 
-    // Create header table with logos
+    // Create header table with logos (fixed DXA widths for Google Docs)
     const headerTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
+        layout: TableLayoutType.FIXED,
+        width: { size: 9360, type: WidthType.DXA },
+        columnWidths: [4680, 4680],
         borders: {
             top: { style: BorderStyle.NONE },
             bottom: { style: BorderStyle.NONE },
@@ -937,7 +953,7 @@ export const generateDocx = async (data) => {
                 children: [
                     new TableCell({
                         children: [leftLogoContent],
-                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        width: { size: 4680, type: WidthType.DXA },
                         borders: {
                             top: { style: BorderStyle.NONE },
                             bottom: { style: BorderStyle.NONE },
@@ -947,7 +963,7 @@ export const generateDocx = async (data) => {
                     }),
                     new TableCell({
                         children: [rightLogoContent],
-                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        width: { size: 4680, type: WidthType.DXA },
                         borders: {
                             top: { style: BorderStyle.NONE },
                             bottom: { style: BorderStyle.NONE },
