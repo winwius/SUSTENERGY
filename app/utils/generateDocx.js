@@ -28,61 +28,69 @@ export const generateDocx = async (data) => {
         });
     };
 
-    // Helper to securely fetch images
+    // Helper: Fetch and convert image to Uint8Array with Word compatibility
     const fetchImage = async (url) => {
+        if (!url) return null;
         try {
-            if (!url) return null;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
-
-            let blob = await response.blob();
-
-            // Basic validation
-            if (blob.size === 0 || blob.type.indexOf('text/html') !== -1) return null;
-
-            // Convert WebP or other unsupported types to PNG
-            if (blob.type === 'image/webp' || blob.type === 'image/gif' || blob.type === 'image/avif') {
-                try {
-                    blob = await new Promise((resolve, reject) => {
-                        const img = new Image();
-                        img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0);
-                            canvas.toBlob((newBlob) => resolve(newBlob), 'image/png');
-                        };
-                        img.onerror = (e) => reject(e);
-                        img.src = URL.createObjectURL(blob);
-                    });
-                } catch (conversionError) {
-                    console.warn("Failed to convert image, using original", conversionError);
+            // Step 1: Load the image into an Image element to validate it
+            const img = await new Promise((resolve, reject) => {
+                const image = new Image();
+                image.onload = () => resolve(image);
+                image.onerror = (e) => {
+                    console.error('Failed to load image:', url);
+                    reject(e);
+                };
+                // Set crossOrigin for external URLs (data URLs don't need it)
+                if (!url.startsWith('data:')) {
+                    image.crossOrigin = 'anonymous';
                 }
+                image.src = url;
+            });
+
+            // Step 2: Force re-compression through canvas
+            // This strips metadata and ensures clean binary data that Word accepts
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+
+            const ctx = canvas.getContext('2d', { alpha: true });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            // Step 3: Export using toDataURL (more reliable than toBlob for Word)
+            // Always use PNG to preserve quality and transparency
+            const dataURL = canvas.toDataURL('image/png', 1.0);
+
+            // Step 4: Convert data URL to Uint8Array
+            // Strip the "data:image/png;base64," prefix
+            const base64Data = dataURL.split(',')[1];
+
+            // Decode base64 to binary string
+            const binaryString = atob(base64Data);
+
+            // Convert binary string to Uint8Array
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
             }
 
-            const buffer = await blob.arrayBuffer();
-            return new Uint8Array(buffer);
+            console.log(`Processed image: ${url.substring(0, 50)}... (${bytes.length} bytes, PNG)`);
+
+            return bytes;
         } catch (error) {
-            console.warn(`Could not load image from ${url}`, error);
+            console.error(`Failed to process image from ${url}:`, error);
             return null;
         }
     };
 
-    // Helper to clone buffer to ensure unique references for every ImageRun
-    const cloneBuffer = (buffer) => {
-        if (!buffer) return null;
-        const newBuf = new Uint8Array(buffer.length);
-        newBuf.set(buffer);
-        return newBuf;
-    };
+    // Remove the cloneBuffer helper - we'll fetch fresh each time instead
+    // This forces the docx library to create unique relationship IDs
 
-    // Process Client Logo
-    // We fetch ONCE, but will clone later
-    const logoDataMaster = await fetchImage(logo);
+    // Process Client Logo - store URL only, fetch fresh each time needed
+    const clientLogoUrl = logo;
 
-    // Process Sustenergy Logo from public folder
-    const sustLogoDataMaster = await fetchImage(window.location.origin + "/sustenergy_logo.png");
+    // Process Sustenergy Logo - store URL only
+    const sustLogoUrl = window.location.origin + "/sustenergy_logo.png";
 
     // Helper to get image dimensions
     const getImageDimensions = (url) => {
@@ -94,7 +102,7 @@ export const generateDocx = async (data) => {
         });
     };
 
-    // Process Signature
+    // Process Signature - fetch data BEFORE creating the table
     let signatureRun = new Paragraph({ text: "", spacing: { before: 800 } });
     if (signature) {
         try {
@@ -144,8 +152,13 @@ export const generateDocx = async (data) => {
                                         new Paragraph({
                                             children: [
                                                 new ImageRun({
-                                                    data: cloneBuffer(sigData), // CLONE HERE
-                                                    transformation: { width: finalWidth, height: finalHeight },
+                                                    type: 'image/png',
+                                                    data: sigData,
+                                                    transformation: { width: Math.round(finalWidth), height: Math.round(finalHeight) },
+                                                    altText: {
+                                                        title: "Signature",
+                                                        description: "Authorized signature for audit report"
+                                                    },
                                                 }),
                                             ],
                                             alignment: AlignmentType.LEFT,
@@ -169,21 +182,37 @@ export const generateDocx = async (data) => {
     // --- Header Construction ---
 
     // Function to create a fresh Logos Row (prevents shared reference issues in DOCX)
-    const createLogosRow = () => {
+    const createLogosRow = async () => {
         let leftLogoChild = new TextRun("");
-        if (logoDataMaster) {
-            leftLogoChild = new ImageRun({
-                data: cloneBuffer(logoDataMaster), // Use Clone
-                transformation: { width: 100, height: 100 },
-            });
+        if (clientLogoUrl) {
+            const logoData = await fetchImage(clientLogoUrl);
+            if (logoData) {
+                leftLogoChild = new ImageRun({
+                    type: 'image/png',
+                    data: logoData,
+                    transformation: { width: Math.round(100), height: Math.round(100) },
+                    altText: {
+                        title: "Client Logo",
+                        description: "Client organization logo"
+                    },
+                });
+            }
         }
 
         let rightLogoChild = new TextRun("");
-        if (sustLogoDataMaster) {
-            rightLogoChild = new ImageRun({
-                data: cloneBuffer(sustLogoDataMaster), // Use Clone
-                transformation: { width: 100, height: 80 },
-            });
+        if (sustLogoUrl) {
+            const sustLogoData = await fetchImage(sustLogoUrl);
+            if (sustLogoData) {
+                rightLogoChild = new ImageRun({
+                    type: 'image/png',
+                    data: sustLogoData,
+                    transformation: { width: Math.round(100), height: Math.round(100) },
+                    altText: {
+                        title: "Sustenergy Logo",
+                        description: "Sustenergy Foundation logo"
+                    },
+                });
+            }
         }
 
         return new TableRow({
@@ -253,8 +282,8 @@ export const generateDocx = async (data) => {
         });
     };
 
-    const firstPageTable = createBoxedHeader([createLogosRow(), titleRow]);
-    const defaultPageTable = createBoxedHeader([createLogosRow()]);
+    const firstPageTable = createBoxedHeader([await createLogosRow(), titleRow]);
+    const defaultPageTable = createBoxedHeader([await createLogosRow()]);
 
     // --- Audit Details Section ---
 
@@ -356,10 +385,15 @@ export const generateDocx = async (data) => {
                     imageChild = new Paragraph({
                         children: [
                             new ImageRun({
-                                data: cloneBuffer(imageData), // Clone for safety
+                                type: 'image/png',
+                                data: imageData,
                                 transformation: {
                                     width: 300,
                                     height: 200,
+                                },
+                                altText: {
+                                    title: `Snapshot ${slNo}`,
+                                    description: group.description || "Electrical installation snapshot"
                                 },
                             }),
                         ],

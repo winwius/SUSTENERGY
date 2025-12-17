@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "docx": "^9.5.1",
+    "docx": "^8.5.0",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
@@ -21,6 +21,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "adm-zip": "^0.5.16",
     "typescript": "^5"
   }
 }
