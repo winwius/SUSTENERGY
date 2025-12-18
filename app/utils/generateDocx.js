@@ -137,9 +137,12 @@ function createTableRow(label, value) {
 
 /**
  * Create a data table row (for power parameters, load details)
- * Headers have teal background with white text (matching Snapshots style)
+ * Headers have customizable background color with white text
+ * @param {Array} cells - Array of cell values
+ * @param {boolean} isHeader - Whether this is a header row
+ * @param {string} headerColor - Hex color for header background (default: teal #2DD4BF)
  */
-function createDataRow(cells, isHeader = false) {
+function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
     return new TableRow({
         children: cells.map((text, index) =>
             new TableCell({
@@ -156,7 +159,7 @@ function createDataRow(cells, isHeader = false) {
                         alignment: index === 0 ? AlignmentType.LEFT : AlignmentType.CENTER
                     })
                 ],
-                shading: isHeader ? { fill: "2DD4BF" } : undefined,
+                shading: isHeader ? { fill: headerColor } : undefined,
                 margins: {
                     top: 80,
                     bottom: 80,
@@ -593,11 +596,12 @@ export const generateDocx = async (data) => {
             width: { size: 9360, type: WidthType.DXA },
             columnWidths: [1400, 6100, 1860],
             borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.NONE },
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE },
-                insideVertical: { style: BorderStyle.NONE }
+                top: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                left: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                right: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
             },
             rows: [tocHeaderRow, ...tocDataRows]
         })
@@ -679,7 +683,7 @@ export const generateDocx = async (data) => {
             })
         );
 
-        // Create snapshot table header row with teal background (fixed DXA widths)
+        // Create snapshot table header row with purple background (#8B5CF6) to match title
         const snapshotHeaderRow = new TableRow({
             children: [
                 new TableCell({
@@ -689,7 +693,7 @@ export const generateDocx = async (data) => {
                             alignment: AlignmentType.CENTER
                         })
                     ],
-                    shading: { fill: "2DD4BF" },
+                    shading: { fill: "8B5CF6" },
                     width: { size: 936, type: WidthType.DXA },
                     margins: { top: 100, bottom: 100, left: 100, right: 100 }
                 }),
@@ -699,7 +703,7 @@ export const generateDocx = async (data) => {
                             children: [new TextRun({ text: "Image", bold: true, size: 24, color: "FFFFFF" })]
                         })
                     ],
-                    shading: { fill: "2DD4BF" },
+                    shading: { fill: "8B5CF6" },
                     width: { size: 3744, type: WidthType.DXA },
                     margins: { top: 100, bottom: 100, left: 150, right: 100 }
                 }),
@@ -709,7 +713,7 @@ export const generateDocx = async (data) => {
                             children: [new TextRun({ text: "Description", bold: true, size: 24, color: "FFFFFF" })]
                         })
                     ],
-                    shading: { fill: "2DD4BF" },
+                    shading: { fill: "8B5CF6" },
                     width: { size: 4680, type: WidthType.DXA },
                     margins: { top: 100, bottom: 100, left: 150, right: 100 }
                 })
@@ -860,8 +864,9 @@ export const generateDocx = async (data) => {
         );
 
         const pp = powerParameters;
+        // Orange header (#F59E0B) to match title color
         const powerRows = [
-            createDataRow(["Parameter", "Test Point", "Value", "Remarks"], true),
+            createDataRow(["Parameter", "Test Point", "Value", "Remarks"], true, "F59E0B"),
             createDataRow(["Line Voltage", "RY", pp.lineVoltage?.ry || "", ""]),
             createDataRow(["", "YB", pp.lineVoltage?.yb || "", ""]),
             createDataRow(["", "BR", pp.lineVoltage?.br || "", ""]),
@@ -905,8 +910,9 @@ export const generateDocx = async (data) => {
             })
         );
 
+        // Red header (#EF4444) to match title color
         const loadRows = [
-            createDataRow(["Sl. No", "Type of Load", "Power (W)", "Qty", "Sub Total (KW)"], true),
+            createDataRow(["Sl. No", "Type of Load", "Power (W)", "Qty", "Sub Total (KW)"], true, "EF4444"),
             ...connectedLoad.map((load, index) =>
                 createDataRow([index + 1, load.type, load.power, load.qty, load.subTotal])
             )
@@ -914,7 +920,7 @@ export const generateDocx = async (data) => {
 
         // Calculate total
         const totalLoad = connectedLoad.reduce((acc, curr) => acc + (parseFloat(curr.subTotal) || 0), 0);
-        loadRows.push(createDataRow(["", "Connected load in KW", "", "", totalLoad.toFixed(2)], true));
+        loadRows.push(createDataRow(["", "Connected load in KW", "", "", totalLoad.toFixed(2)], true, "EF4444"));
 
         documentChildren.push(
             new Table({

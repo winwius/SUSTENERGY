@@ -60,6 +60,25 @@ export const generatePdf = async (data) => {
         }
     };
 
+    // --- Footer Rendering Function ---
+    const drawFooter = (docObject) => {
+        const footerY = pageHeight - 10;
+        const pageNum = docObject.internal.getNumberOfPages();
+
+        docObject.setFontSize(9);
+        docObject.setFont("helvetica", "normal");
+        docObject.setTextColor(100, 100, 100);
+
+        // Left: Document name
+        docObject.text("Electrical Safety Audit Report", margin, footerY);
+
+        // Right: Page number
+        docObject.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: "right" });
+
+        // Reset text color
+        docObject.setTextColor(0, 0, 0);
+    };
+
     // --- Document Construction ---
 
     // Page 1: Title & Details
@@ -96,26 +115,36 @@ export const generatePdf = async (data) => {
 
     currentY = doc.lastAutoTable.finalY + 15;
 
-    // TOC (Simplified)
+    // TOC (Simplified - without page numbers)
     addText("Table of Contents", pageWidth / 2, currentY, 14, "center", "bold");
     currentY += 10;
 
-    // TOC Data
+    // TOC Data (Page No column present but values left empty as they depend on content)
     const tocData = [
-        ["1", "Audit - General observations", "Page 2"], // Simplified Page Numbers
-        ["2", "Snapshots of electrical installation", "Page 2"],
-        ["3", "Power parameters", "Page 3"],
-        ["4", "Connected load detail", "Page 3"],
-        ["5", "Conclusions", "Page 3"],
+        ["1", "Audit - General observations", "-"],
+        ["2", "Major Highlights", "-"],
+        ["3", "Snapshots of electrical installation", "-"],
+        ["4", "Power parameters", "-"],
+        ["5", "Connected load detail", "-"],
+        ["6", "Conclusions", "-"],
     ];
 
     autoTable(doc, {
         startY: currentY,
-        head: [["Sl. No", "Description"]],
-        body: tocData.map(row => [row[0], row[1]]),
+        head: [["Sl. No", "Description", "Page No"]],
+        body: tocData,
         theme: 'grid',
         styles: { fontSize: 10 },
-        columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 'auto' } }
+        headStyles: {
+            fillColor: [45, 212, 191], // Teal color #2DD4BF
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+        },
+        columnStyles: {
+            0: { cellWidth: 20, halign: 'center' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 25, halign: 'center' }
+        }
     });
 
     // Content Pages Start
@@ -179,6 +208,11 @@ export const generatePdf = async (data) => {
         head: [["Sl. No", "Image", "Description"]],
         body: snapshotBody,
         theme: 'grid',
+        headStyles: {
+            fillColor: [139, 92, 246], // Purple #8B5CF6 to match title
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+        },
         columnStyles: {
             0: { cellWidth: 15 },
             1: { cellWidth: 70, minCellHeight: 45 }, // Ensure height for image
@@ -236,6 +270,11 @@ export const generatePdf = async (data) => {
         head: [["Parameter", "Test Point", "Value", "Remarks"]],
         body: ppBody,
         theme: 'grid',
+        headStyles: {
+            fillColor: [245, 158, 11], // Orange #F59E0B to match title
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+        },
         didDrawPage: (data) => { drawHeader(doc); },
         margin: { top: 35 }
     });
@@ -261,6 +300,11 @@ export const generatePdf = async (data) => {
         head: [["Sl. No", "Type of Load", "Power (W)", "Qty", "Sub Total (KW)"]],
         body: loadBody,
         theme: 'grid',
+        headStyles: {
+            fillColor: [239, 68, 68], // Red #EF4444 to match title
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+        },
         didDrawPage: (data) => { drawHeader(doc); },
         margin: { top: 35 }
     });
@@ -324,6 +368,28 @@ export const generatePdf = async (data) => {
     currentY += 5;
     doc.text("Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", margin, currentY);
 
+    // --- Draw footers on all pages ---
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        const footerY = pageHeight - 10;
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 100);
+
+        // Left: Document name
+        doc.text("Electrical Safety Audit Report", margin, footerY);
+
+        // Center: separator
+        doc.text("|", pageWidth / 2, footerY, { align: "center" });
+
+        // Right: Page number
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, footerY, { align: "right" });
+
+        // Reset text color
+        doc.setTextColor(0, 0, 0);
+    }
 
     // Save
     const safeBranchName = (branchName || "Draft").replace(/[^a-z0-9\s-_]/gi, '').trim().replace(/\s+/g, '_');
