@@ -137,6 +137,7 @@ function createTableRow(label, value) {
 
 /**
  * Create a data table row (for power parameters, load details)
+ * Headers have teal background with white text (matching Snapshots style)
  */
 function createDataRow(cells, isHeader = false) {
     return new TableRow({
@@ -149,21 +150,72 @@ function createDataRow(cells, isHeader = false) {
                                 text: text !== null && text !== undefined ? String(text) : "-",
                                 bold: isHeader,
                                 size: 22,
-                                color: isHeader ? "1F2937" : "4B5563"
+                                color: isHeader ? "FFFFFF" : "4B5563"
                             })
                         ],
                         alignment: index === 0 ? AlignmentType.LEFT : AlignmentType.CENTER
                     })
                 ],
-                shading: isHeader ? { fill: "E5E7EB" } : undefined,
+                shading: isHeader ? { fill: "2DD4BF" } : undefined,
                 margins: {
                     top: 80,
                     bottom: 80,
                     left: 100,
                     right: 100
+                },
+                borders: {
+                    top: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                    bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                    left: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                    right: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
                 }
             })
         )
+    });
+}
+
+/**
+ * Create paragraphs from text with preserved line breaks
+ * @param {string} text - Text content that may contain line breaks
+ * @param {object} options - Styling options
+ * @returns {Array} Array of Paragraph objects
+ */
+function createTextParagraphs(text, options = {}) {
+    const {
+        size = 24,
+        color = "374151",
+        bold = false,
+        spacing = { after: 120 },
+        bullet = false
+    } = options;
+
+    if (!text) return [];
+
+    // Split by newlines (handle both \n and \r\n)
+    const lines = text.split(/\r?\n/);
+
+    return lines.map((line, index) => {
+        // For empty lines, create a blank paragraph for spacing
+        if (line.trim() === "") {
+            return new Paragraph({
+                text: "",
+                spacing: { after: 100 }
+            });
+        }
+
+        const textContent = bullet ? `• ${line}` : line;
+
+        return new Paragraph({
+            children: [
+                new TextRun({
+                    text: textContent,
+                    size,
+                    color,
+                    bold
+                })
+            ],
+            spacing: index === lines.length - 1 ? spacing : { after: 80 }
+        });
     });
 }
 
@@ -200,6 +252,133 @@ export const generateDocx = async (data) => {
 
     // Prepare document children
     const documentChildren = [];
+
+    // ========== DUAL LOGO HEADER (in document body for mobile compatibility) ==========
+    // Load client logo
+    let clientLogoBytes = null;
+    if (logo) {
+        try {
+            clientLogoBytes = await convertImageToBytes(logo);
+        } catch (error) {
+            console.error('Error loading client logo:', error);
+        }
+    }
+
+    // Load Sustenergy logo
+    let sustLogoBytes = null;
+    try {
+        const sustLogoUrl = window.location.origin + "/sustenergy_logo.png";
+        sustLogoBytes = await convertImageToBytes(sustLogoUrl);
+    } catch (error) {
+        console.error('Error loading Sustenergy logo:', error);
+    }
+
+    // Build logo row for document body
+    const logoRowChildren = [];
+
+    // Left cell with client logo
+    let leftLogoCell;
+    if (clientLogoBytes) {
+        leftLogoCell = new TableCell({
+            children: [
+                new Paragraph({
+                    children: [
+                        new ImageRun({
+                            data: clientLogoBytes,
+                            transformation: { width: 100, height: 60 },
+                            type: 'png'
+                        })
+                    ],
+                    alignment: AlignmentType.LEFT
+                })
+            ],
+            width: { size: 4680, type: WidthType.DXA },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE }
+            }
+        });
+    } else {
+        leftLogoCell = new TableCell({
+            children: [new Paragraph({ text: "" })],
+            width: { size: 4680, type: WidthType.DXA },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE }
+            }
+        });
+    }
+
+    // Right cell with Sustenergy logo
+    let rightLogoCell;
+    if (sustLogoBytes) {
+        rightLogoCell = new TableCell({
+            children: [
+                new Paragraph({
+                    children: [
+                        new ImageRun({
+                            data: sustLogoBytes,
+                            transformation: { width: 100, height: 60 },
+                            type: 'png'
+                        })
+                    ],
+                    alignment: AlignmentType.RIGHT
+                })
+            ],
+            width: { size: 4680, type: WidthType.DXA },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE }
+            }
+        });
+    } else {
+        rightLogoCell = new TableCell({
+            children: [new Paragraph({ text: "" })],
+            width: { size: 4680, type: WidthType.DXA },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE }
+            }
+        });
+    }
+
+    // Add logo table to document body
+    documentChildren.push(
+        new Table({
+            layout: TableLayoutType.FIXED,
+            width: { size: 9360, type: WidthType.DXA },
+            columnWidths: [4680, 4680],
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+                insideHorizontal: { style: BorderStyle.NONE },
+                insideVertical: { style: BorderStyle.NONE }
+            },
+            rows: [
+                new TableRow({
+                    children: [leftLogoCell, rightLogoCell]
+                })
+            ]
+        })
+    );
+
+    // Add spacing after logo
+    documentChildren.push(
+        new Paragraph({
+            text: "",
+            spacing: { after: 200 }
+        })
+    );
 
     // ========== TITLE ==========
     documentChildren.push(
@@ -442,18 +621,13 @@ export const generateDocx = async (data) => {
             })
         );
 
-        documentChildren.push(
-            new Paragraph({
-                children: [
-                    new TextRun({
-                        text: generalObservations,
-                        size: 24,
-                        color: "374151"
-                    })
-                ],
-                spacing: { after: 200 }
-            })
-        );
+        // Preserve line breaks and paragraphs from user input
+        const observationParagraphs = createTextParagraphs(generalObservations, {
+            size: 24,
+            color: "374151",
+            spacing: { after: 200 }
+        });
+        documentChildren.push(...observationParagraphs);
     }
 
     // ========== MAJOR HIGHLIGHTS ==========
@@ -476,18 +650,14 @@ export const generateDocx = async (data) => {
 
         majorHighlights.forEach(highlight => {
             if (highlight.trim() !== "") {
-                documentChildren.push(
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: `• ${highlight}`,
-                                size: 24,
-                                color: "374151"
-                            })
-                        ],
-                        spacing: { after: 100 }
-                    })
-                );
+                // Preserve line breaks within each highlight
+                const highlightParagraphs = createTextParagraphs(highlight, {
+                    size: 24,
+                    color: "374151",
+                    bullet: true,
+                    spacing: { after: 150 }
+                });
+                documentChildren.push(...highlightParagraphs);
             }
         });
     }
@@ -580,11 +750,7 @@ export const generateDocx = async (data) => {
                                 borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
                             }),
                             new TableCell({
-                                children: [
-                                    new Paragraph({
-                                        children: [new TextRun({ text: description, size: 22, color: "374151" })]
-                                    })
-                                ],
+                                children: description ? createTextParagraphs(description, { size: 22, color: "374151", spacing: { after: 50 } }) : [new Paragraph({ text: "" })],
                                 margins: { top: 100, bottom: 100, left: 150, right: 100 },
                                 borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
                             })
@@ -642,11 +808,9 @@ export const generateDocx = async (data) => {
                                     borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
                                 }),
                                 new TableCell({
-                                    children: [
-                                        new Paragraph({
-                                            children: [new TextRun({ text: isFirst ? description : "", size: 22, color: "374151" })]
-                                        })
-                                    ],
+                                    children: isFirst && description
+                                        ? createTextParagraphs(description, { size: 22, color: "374151", spacing: { after: 50 } })
+                                        : [new Paragraph({ text: "" })],
                                     margins: { top: 100, bottom: 100, left: 150, right: 100 },
                                     borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
                                 })
@@ -658,18 +822,19 @@ export const generateDocx = async (data) => {
             }
         }
 
-        // Add the snapshots table
+        // Add the snapshots table with visible borders
         documentChildren.push(
             new Table({
                 layout: TableLayoutType.FIXED,
                 width: { size: 9360, type: WidthType.DXA },
                 columnWidths: [936, 3744, 4680],
                 borders: {
-                    top: { style: BorderStyle.NONE },
-                    bottom: { style: BorderStyle.NONE },
-                    left: { style: BorderStyle.NONE },
-                    right: { style: BorderStyle.NONE },
-                    insideVertical: { style: BorderStyle.NONE }
+                    top: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                    bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                    left: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                    right: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                    insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
+                    insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
                 },
                 rows: [snapshotHeaderRow, ...snapshotDataRows]
             })
@@ -780,18 +945,16 @@ export const generateDocx = async (data) => {
         );
 
         conclusions.forEach(conclusion => {
-            documentChildren.push(
-                new Paragraph({
-                    children: [
-                        new TextRun({
-                            text: `• ${conclusion}`,
-                            size: 24,
-                            color: "374151"
-                        })
-                    ],
-                    spacing: { after: 100 }
-                })
-            );
+            if (conclusion.trim() !== "") {
+                // Preserve line breaks within each conclusion
+                const conclusionParagraphs = createTextParagraphs(conclusion, {
+                    size: 24,
+                    color: "374151",
+                    bullet: true,
+                    spacing: { after: 150 }
+                });
+                documentChildren.push(...conclusionParagraphs);
+            }
         });
     }
 
@@ -860,123 +1023,10 @@ export const generateDocx = async (data) => {
         })
     );
 
-    // ========== FOOTER AUTO-GENERATED NOTE ==========
-    documentChildren.push(
-        new Paragraph({
-            children: [
-                new TextRun({
-                    text: "This document was generated automatically.",
-                    italics: true,
-                    size: 20,
-                    color: "9CA3AF"
-                })
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 400 }
-        })
-    );
 
-    // ========== LOAD HEADER LOGOS ==========
-    // Load client logo for header (left side)
-    let clientLogoBytes = null;
-    if (logo) {
-        try {
-            clientLogoBytes = await convertImageToBytes(logo);
-        } catch (error) {
-            console.error('Error loading client logo for header:', error);
-        }
-    }
-
-    // Load Sustenergy logo for header (right side)
-    let sustLogoBytes = null;
-    try {
-        const sustLogoUrl = window.location.origin + "/sustenergy_logo.png";
-        sustLogoBytes = await convertImageToBytes(sustLogoUrl);
-    } catch (error) {
-        console.error('Error loading Sustenergy logo:', error);
-    }
-
-    // Create header with both logos in a table (client left, Sustenergy right)
+    // ========== HEADER (empty - logos moved to document body for mobile compatibility) ==========
     const headerChildren = [];
-
-    // Build left logo cell content
-    let leftLogoContent = new Paragraph({ text: "" });
-    if (clientLogoBytes) {
-        leftLogoContent = new Paragraph({
-            children: [
-                new ImageRun({
-                    data: clientLogoBytes,
-                    transformation: {
-                        width: 100,
-                        height: 60
-                    },
-                    type: 'png'
-                })
-            ],
-            alignment: AlignmentType.LEFT
-        });
-    }
-
-    // Build right logo cell content
-    let rightLogoContent = new Paragraph({ text: "" });
-    if (sustLogoBytes) {
-        rightLogoContent = new Paragraph({
-            children: [
-                new ImageRun({
-                    data: sustLogoBytes,
-                    transformation: {
-                        width: 100,
-                        height: 60
-                    },
-                    type: 'png'
-                })
-            ],
-            alignment: AlignmentType.RIGHT
-        });
-    }
-
-    // Create header table with logos (fixed DXA widths for Google Docs)
-    const headerTable = new Table({
-        layout: TableLayoutType.FIXED,
-        width: { size: 9360, type: WidthType.DXA },
-        columnWidths: [4680, 4680],
-        borders: {
-            top: { style: BorderStyle.NONE },
-            bottom: { style: BorderStyle.NONE },
-            left: { style: BorderStyle.NONE },
-            right: { style: BorderStyle.NONE },
-            insideHorizontal: { style: BorderStyle.NONE },
-            insideVertical: { style: BorderStyle.NONE }
-        },
-        rows: [
-            new TableRow({
-                children: [
-                    new TableCell({
-                        children: [leftLogoContent],
-                        width: { size: 4680, type: WidthType.DXA },
-                        borders: {
-                            top: { style: BorderStyle.NONE },
-                            bottom: { style: BorderStyle.NONE },
-                            left: { style: BorderStyle.NONE },
-                            right: { style: BorderStyle.NONE }
-                        }
-                    }),
-                    new TableCell({
-                        children: [rightLogoContent],
-                        width: { size: 4680, type: WidthType.DXA },
-                        borders: {
-                            top: { style: BorderStyle.NONE },
-                            bottom: { style: BorderStyle.NONE },
-                            left: { style: BorderStyle.NONE },
-                            right: { style: BorderStyle.NONE }
-                        }
-                    })
-                ]
-            })
-        ]
-    });
-
-    headerChildren.push(headerTable);
+    // Header is intentionally empty - logos are in the document body for better mobile support
 
     // Create footer with page numbers
     const footerChildren = [
