@@ -37,9 +37,25 @@ export const generatePdf = async (data) => {
     };
 
     const addText = (text, x, y, size = 10, align = "left", weight = "normal") => {
+        // Strip HTML tags for PDF text
+        const cleanText = (text || "").replace(/<[^>]*>?/gm, '');
         doc.setFontSize(size);
         doc.setFont("helvetica", weight);
-        doc.text(text, x, y, { align: align });
+        doc.text(cleanText, x, y, { align: align });
+    };
+
+    const stripHtml = (html) => {
+        if (!html) return "";
+        return html
+            .replace(/<li[^>]*>/gi, "• ")
+            .replace(/<(?:div|p|br)[^>]*>/gi, "\n")
+            .replace(/<[^>]*>?/gm, "")
+            .replace(/&nbsp;/g, " ")
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .trim();
     };
 
     // --- Asset Loading ---
@@ -168,11 +184,30 @@ export const generatePdf = async (data) => {
     currentY += 7;
 
     // Wrap text for observations
-    const splitObs = doc.splitTextToSize(generalObservations || "No observations.", pageWidth - (2 * margin));
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(splitObs, margin, currentY);
-    currentY += (splitObs.length * 5) + 10;
+    if (generalObservations && generalObservations.length > 0) {
+        generalObservations.forEach((observation) => {
+            if (observation && observation.trim() !== "") {
+                const cleanObs = stripHtml(observation);
+                const splitObs = doc.splitTextToSize(cleanObs, pageWidth - (2 * margin));
+
+                // Add page if needed
+                if (currentY + (splitObs.length * 5) > pageHeight - margin) {
+                    doc.addPage();
+                    drawHeader(doc);
+                    currentY = 40;
+                }
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                doc.text(splitObs, margin, currentY);
+                currentY += (splitObs.length * 5) + 5;
+            }
+        });
+        currentY += 5;
+    } else {
+        addText("No observations.", margin, currentY, 10, "left", "normal");
+        currentY += 10;
+    }
 
     // 2. Snapshots
     addText("2.0 Snapshots of Electrical Installation", margin, currentY, 12, "left", "bold");
@@ -188,17 +223,16 @@ export const generatePdf = async (data) => {
     // Format: Sl No | Image | Description
 
     snapshots.forEach(group => {
+        const cleanDesc = stripHtml(group.description || "");
         if (!group.images || group.images.length === 0) {
-            snapshotBody.push([slNo, "", group.description || ""]);
+            snapshotBody.push([slNo, "", cleanDesc]);
             slNo++;
         } else {
             group.images.forEach((imgUrl, idx) => {
-                // We need to pass the raw image data or index to draw it later
-                // Storing a custom object in the cell data
                 snapshotBody.push([
-                    idx === 0 ? slNo : "", // Only show SlNo for first image
-                    { image: imgUrl, width: 60, height: 40 }, // Marker for image
-                    idx === 0 ? (group.description || "") : "" // Only description for first
+                    idx === 0 ? slNo : "",
+                    { image: imgUrl, width: 60, height: 40 },
+                    idx === 0 ? cleanDesc : ""
                 ]);
             });
             slNo++;
@@ -330,7 +364,9 @@ export const generatePdf = async (data) => {
     currentY += 7;
 
     conclusions.forEach(c => {
-        const splitC = doc.splitTextToSize(`• ${c}`, pageWidth - (2 * margin));
+        const cleanC = stripHtml(c);
+        if (!cleanC) return;
+        const splitC = doc.splitTextToSize(`• ${cleanC}`, pageWidth - (2 * margin));
         if (currentY + (splitC.length * 5) > pageHeight - 40) { // Check space
             doc.addPage();
             drawHeader(doc);

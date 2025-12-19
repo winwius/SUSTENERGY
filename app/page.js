@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Download, Camera, FileText, Zap, Activity, CheckCircle, PenTool, Upload, X, ChevronDown, ChevronUp, Images, FileType } from "lucide-react";
 import { generateDocx } from "./utils/generateDocx";
 import { generatePdf } from "./utils/generatePdf";
+import dynamic from "next/dynamic";
+
+const RichTextEditor = dynamic(() => import("./components/RichTextEditor"), {
+    ssr: false,
+    loading: () => <div className="h-[200px] bg-slate-50 animate-pulse rounded-xl border-2 border-slate-200" />
+});
 
 function CollapsibleCard({ title, icon: Icon, theme, children, headerContent, bodyClassName = "card-body" }) {
     const [isOpen, setIsOpen] = useState(true);
@@ -46,6 +52,7 @@ function CollapsibleCard({ title, icon: Icon, theme, children, headerContent, bo
 }
 
 export default function Home() {
+    const isProcessingRef = useRef(false);
     const [formData, setFormData] = useState({
         branchName: "",
         branchCode: "",
@@ -55,7 +62,7 @@ export default function Home() {
         client: "",
         createdBy: "",
         approvedBy: "",
-        generalObservations: "",
+        generalObservations: [""],
         snapshots: [],
         powerParameters: {
             lineVoltage: { ry: "", yb: "", br: "" },
@@ -154,8 +161,12 @@ export default function Home() {
 
     // Header/Footer "Add Photo" -> Creates a NEW GROUP with all selected images
     const handleMultiFileUpload = async (e) => {
+        if (isProcessingRef.current) return;
         const files = Array.from(e.target.files);
         if (!files.length) return;
+
+        isProcessingRef.current = true;
+        e.target.value = '';
 
         const newImages = [];
         for (const file of files) {
@@ -174,13 +185,17 @@ export default function Home() {
             ]
         }));
 
-        e.target.value = '';
+        isProcessingRef.current = false;
     };
 
     // Add MORE photos to an EXISTING group
     const handleAddPhotosToGroup = async (e, groupIndex) => {
+        if (isProcessingRef.current) return;
         const files = Array.from(e.target.files);
         if (!files.length) return;
+
+        isProcessingRef.current = true;
+        e.target.value = '';
 
         const newImages = [];
         for (const file of files) {
@@ -190,28 +205,47 @@ export default function Home() {
             }
         }
 
-        setFormData((prev) => {
-            const newSnapshots = [...prev.snapshots];
-            newSnapshots[groupIndex].images = [...newSnapshots[groupIndex].images, ...newImages];
-            return { ...prev, snapshots: newSnapshots };
-        });
-        e.target.value = '';
+        setFormData((prev) => ({
+            ...prev,
+            snapshots: prev.snapshots.map((group, idx) => {
+                if (idx === groupIndex) {
+                    return {
+                        ...group,
+                        images: [...group.images, ...newImages]
+                    };
+                }
+                return group;
+            })
+        }));
+
+        isProcessingRef.current = false;
     };
 
     const removeImageFromGroup = (groupIndex, imageIndex) => {
-        setFormData((prev) => {
-            const newSnapshots = [...prev.snapshots];
-            newSnapshots[groupIndex].images = newSnapshots[groupIndex].images.filter((_, i) => i !== imageIndex);
-            return { ...prev, snapshots: newSnapshots };
-        });
+        setFormData((prev) => ({
+            ...prev,
+            snapshots: prev.snapshots.map((group, idx) => {
+                if (idx === groupIndex) {
+                    return {
+                        ...group,
+                        images: group.images.filter((_, i) => i !== imageIndex)
+                    };
+                }
+                return group;
+            })
+        }));
     };
 
     const handleSnapshotDescChange = (value, index) => {
-        setFormData((prev) => {
-            const newSnapshots = [...prev.snapshots];
-            newSnapshots[index].description = value;
-            return { ...prev, snapshots: newSnapshots };
-        });
+        setFormData((prev) => ({
+            ...prev,
+            snapshots: prev.snapshots.map((group, idx) => {
+                if (idx === index) {
+                    return { ...group, description: value };
+                }
+                return group;
+            })
+        }));
     };
 
     // ... (rest of the file until return)
@@ -262,14 +296,19 @@ export default function Home() {
 
     const handleLoadChange = (index, field, value) => {
         setFormData((prev) => {
-            const newLoads = [...prev.connectedLoad];
-            newLoads[index][field] = value;
-            // Auto calc subtotal
-            if (field === "power" || field === "qty") {
-                const power = parseFloat(field === "power" ? value : newLoads[index].power) || 0;
-                const qty = parseFloat(field === "qty" ? value : newLoads[index].qty) || 0;
-                newLoads[index].subTotal = ((power * qty) / 1000).toFixed(3); // KW
-            }
+            const newLoads = prev.connectedLoad.map((load, idx) => {
+                if (idx === index) {
+                    const updatedLoad = { ...load, [field]: value };
+                    // Auto calc subtotal
+                    if (field === "power" || field === "qty") {
+                        const power = parseFloat(field === "power" ? value : updatedLoad.power) || 0;
+                        const qty = parseFloat(field === "qty" ? value : updatedLoad.qty) || 0;
+                        updatedLoad.subTotal = ((power * qty) / 1000).toFixed(3); // KW
+                    }
+                    return updatedLoad;
+                }
+                return load;
+            });
             return { ...prev, connectedLoad: newLoads };
         });
     };
@@ -290,11 +329,10 @@ export default function Home() {
     };
 
     const handleConclusionChange = (value, index) => {
-        setFormData((prev) => {
-            const newConclusions = [...prev.conclusions];
-            newConclusions[index] = value;
-            return { ...prev, conclusions: newConclusions };
-        });
+        setFormData((prev) => ({
+            ...prev,
+            conclusions: prev.conclusions.map((item, idx) => (idx === index ? value : item))
+        }));
     };
 
     // Major Highlights
@@ -317,6 +355,29 @@ export default function Home() {
             const newHighlights = [...prev.majorHighlights];
             newHighlights[index] = value;
             return { ...prev, majorHighlights: newHighlights };
+        });
+    };
+
+    // General Observations
+    const addObservation = () => {
+        setFormData((prev) => ({
+            ...prev,
+            generalObservations: [...prev.generalObservations, ""],
+        }));
+    };
+
+    const removeObservation = (index) => {
+        setFormData((prev) => ({
+            ...prev,
+            generalObservations: prev.generalObservations.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleObservationChange = (value, index) => {
+        setFormData((prev) => {
+            const newObservations = [...prev.generalObservations];
+            newObservations[index] = value;
+            return { ...prev, generalObservations: newObservations };
         });
     };
 
@@ -428,15 +489,47 @@ export default function Home() {
                     </div>
                 </CollapsibleCard>
 
-                {/* 2. Observations - Green Theme */}
-                {/* 2. Observations - Green Theme */}
-                <CollapsibleCard title="General Observations" icon={Activity} theme="green">
-                    <textarea
-                        placeholder="Enter detailed observations about the electrical installation..."
-                        className="input-field min-h-[150px] resize-y"
-                        value={formData.generalObservations}
-                        onChange={(e) => handleInputChange(e, null, "generalObservations")}
-                    />
+                <CollapsibleCard
+                    title="General Observations"
+                    icon={Activity}
+                    theme="green"
+                    bodyClassName="card-body space-y-4"
+                    headerContent={({ expand }) =>
+                        formData.generalObservations.length === 0 && (
+                            <button
+                                onClick={(e) => {
+                                    expand(e);
+                                    addObservation();
+                                }}
+                                className="btn-add flex items-center gap-2"
+                            >
+                                <Plus size={16} /> Add First Observation
+                            </button>
+                        )
+                    }
+                >
+                    {formData.generalObservations.map((observation, index) => (
+                        <div key={index} className="flex gap-3 items-start">
+                            <span className="text-green-500 pt-3 text-lg">•</span>
+                            <div className="flex-1">
+                                <RichTextEditor
+                                    value={observation}
+                                    onChange={(val) => handleObservationChange(val, index)}
+                                    placeholder="Enter observation details..."
+                                />
+                            </div>
+                            <button onClick={() => removeObservation(index)} className="text-slate-400 hover:text-red-500 p-3 transition-colors">
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    ))}
+                    {formData.generalObservations.length > 0 && (
+                        <div className="flex justify-center pt-4">
+                            <button onClick={addObservation} className="btn-add flex items-center gap-2 w-full md:w-auto justify-center">
+                                <Plus size={16} /> Add Another Observation
+                            </button>
+                        </div>
+                    )}
                 </CollapsibleCard>
 
                 {/* Major Highlights - Yellow/Amber Theme */}
@@ -462,12 +555,13 @@ export default function Home() {
                     {formData.majorHighlights.map((highlight, index) => (
                         <div key={index} className="flex gap-3 items-start">
                             <span className="text-orange-500 pt-3 text-lg">•</span>
-                            <textarea
-                                className="input-field min-h-[60px] resize-y"
-                                value={highlight}
-                                onChange={(e) => handleHighlightChange(e.target.value, index)}
-                                placeholder="Enter a major highlight..."
-                            />
+                            <div className="flex-1">
+                                <RichTextEditor
+                                    value={highlight}
+                                    onChange={(val) => handleHighlightChange(val, index)}
+                                    placeholder="Enter a major highlight..."
+                                />
+                            </div>
                             <button onClick={() => removeHighlight(index)} className="text-slate-400 hover:text-red-500 p-3 transition-colors">
                                 <Trash2 size={18} />
                             </button>
@@ -482,7 +576,6 @@ export default function Home() {
                     )}
                 </CollapsibleCard>
 
-                {/* 3. Snapshots - Purple Theme */}
                 {/* 3. Snapshots - Purple Theme */}
                 <CollapsibleCard
                     title="Snapshots"
@@ -522,11 +615,10 @@ export default function Home() {
                                 <div className="space-y-4">
                                     {/* Description - Prominent at Top for the Group */}
                                     <div>
-                                        <textarea
+                                        <RichTextEditor
                                             placeholder="Describe the observations for this set of photos..."
-                                            className="input-field min-h-[100px] resize-y text-sm"
                                             value={group.description}
-                                            onChange={(e) => handleSnapshotDescChange(e.target.value, groupIndex)}
+                                            onChange={(val) => handleSnapshotDescChange(val, groupIndex)}
                                         />
                                     </div>
 
@@ -534,80 +626,72 @@ export default function Home() {
                                     <div>
                                         <div className="flex flex-wrap gap-3">
                                             {group.images.map((img, imgIndex) => (
-                                                <div
-                                                    key={imgIndex}
-                                                    className="relative bg-white rounded-lg border border-slate-200 flex items-center justify-center shadow-sm"
-                                                    style={{ width: '80px', height: '64px', minWidth: '80px' }}
-                                                >
-                                                    <img
-                                                        src={img}
-                                                        alt={`Snapshot ${imgIndex + 1} `}
-                                                        className="w-full h-full object-contain rounded-lg"
-                                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                                    />
-                                                    {/* Individual Image Delete Badge */}
+                                                <div key={imgIndex} className="flex flex-col items-center gap-2">
+                                                    <div
+                                                        className="bg-white rounded-lg border border-slate-200 flex items-center justify-center shadow-sm"
+                                                        style={{ width: '80px', height: '64px', minWidth: '80px' }}
+                                                    >
+                                                        <img
+                                                            src={img}
+                                                            alt={`Snapshot ${imgIndex + 1} `}
+                                                            className="w-full h-full object-contain rounded-lg"
+                                                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                                        />
+                                                    </div>
                                                     <button
                                                         onClick={() => removeImageFromGroup(groupIndex, imgIndex)}
-                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md hover:bg-red-600 transition-all z-10"
+                                                        className="text-[10px] bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded border border-red-100 transition-colors font-bold uppercase tracking-wider"
                                                         title="Remove Image"
                                                     >
-                                                        <X size={12} strokeWidth={3} />
+                                                        Delete
                                                     </button>
                                                 </div>
                                             ))}
-
-                                            {/* Always visible Add Placeholder at the end */}
-
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        ))
-                        }
+                        ))}
 
                         {/* Empty State */}
-                        {
-                            formData.snapshots.length === 0 && (
-                                <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-slate-300">
-                                    <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Camera className="text-purple-400" size={32} />
-                                    </div>
-                                    <h3 className="text-slate-700 font-semibold mb-6">No Observations Added</h3>
-                                    <label className="btn-add flex items-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 px-6 py-2 cursor-pointer shadow-sm mx-auto">
-                                        <Plus size={18} /> Add First Observation
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            multiple
-                                            className="hidden"
-                                            style={{ display: 'none' }}
-                                            onChange={handleMultiFileUpload}
-                                        />
-                                    </label>
+                        {formData.snapshots.length === 0 && (
+                            <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-slate-300">
+                                <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Camera className="text-purple-400" size={32} />
                                 </div>
-                            )
-                        }
+                                <h3 className="text-slate-700 font-semibold mb-6">No Observations Added</h3>
+                                <label className="btn-add flex items-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 px-6 py-2 cursor-pointer shadow-sm mx-auto">
+                                    <Plus size={18} /> Add First Observation
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="hidden"
+                                        style={{ display: 'none' }}
+                                        onChange={handleMultiFileUpload}
+                                    />
+                                </label>
+                            </div>
+                        )}
 
                         {/* Footer Action */}
-                        {
-                            formData.snapshots.length > 0 && (
-                                <div className="mt-4 flex justify-start">
-                                    <label className="btn-add w-full md:w-auto py-3 md:py-2 flex items-center justify-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 cursor-pointer">
-                                        <Plus size={18} /> Add another observation
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            multiple
-                                            className="hidden"
-                                            style={{ display: 'none' }}
-                                            onChange={handleMultiFileUpload}
-                                        />
-                                    </label>
-                                </div>
-                            )
-                        }
-                    </div >
-                </CollapsibleCard >
+                        {formData.snapshots.length > 0 && (
+                            <div className="mt-4 flex justify-start">
+                                <label className="btn-add w-full md:w-auto py-3 md:py-2 flex items-center justify-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 cursor-pointer">
+                                    <Plus size={18} /> Add another observation
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="hidden"
+                                        style={{ display: 'none' }}
+                                        onChange={handleMultiFileUpload}
+                                    />
+                                </label>
+                            </div>
+                        )}
+                    </div>
+                </CollapsibleCard>
 
                 {/* 4. Power Parameters - Orange Theme */}
                 {/* 4. Power Parameters - Orange Theme */}
@@ -807,15 +891,16 @@ export default function Home() {
                         )
                     }
                 >
-                    {formData.conclusions.map((conc, index) => (
+                    {formData.conclusions.map((conclusion, index) => (
                         <div key={index} className="flex gap-3 items-start">
                             <span className="text-teal-500 pt-3 text-lg">•</span>
-                            <textarea
-                                className="input-field min-h-[60px] resize-y"
-                                value={conc}
-                                onChange={(e) => handleConclusionChange(e.target.value, index)}
-                                placeholder="Enter conclusion point..."
-                            />
+                            <div className="flex-1">
+                                <RichTextEditor
+                                    value={conclusion}
+                                    onChange={(val) => handleConclusionChange(val, index)}
+                                    placeholder="Enter a conclusion..."
+                                />
+                            </div>
                             <button onClick={() => removeConclusion(index)} className="text-slate-400 hover:text-red-500 p-3 transition-colors">
                                 <Trash2 size={18} />
                             </button>

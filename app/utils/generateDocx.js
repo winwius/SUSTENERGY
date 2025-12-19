@@ -183,43 +183,102 @@ function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
  * @param {object} options - Styling options
  * @returns {Array} Array of Paragraph objects
  */
-function createTextParagraphs(text, options = {}) {
+/**
+ * Create paragraphs from HTML content (handles <b>, <i>, <ul>, <li>, etc.)
+ * @param {string} html - HTML content from rich text editor
+ * @param {object} options - Default styling options
+ */
+function createTextParagraphs(html, options = {}) {
+    if (!html) return [];
+
     const {
         size = 24,
-        color = "374151",
-        bold = false,
-        spacing = { after: 120 },
-        bullet = false
+        color = "374151"
     } = options;
 
-    if (!text) return [];
+    const paragraphs = [];
 
-    // Split by newlines (handle both \n and \r\n)
-    const lines = text.split(/\r?\n/);
+    // Simple parser to handle common rich text editor output
+    // This breaks down the HTML into block-level elements (div, p, li)
+    const blocks = html.split(/<(?:div|p|li)[^>]*>/i);
 
-    return lines.map((line, index) => {
-        // For empty lines, create a blank paragraph for spacing
-        if (line.trim() === "") {
-            return new Paragraph({
-                text: "",
-                spacing: { after: 100 }
-            });
-        }
+    blocks.forEach((block, blockIndex) => {
+        // Clean up closing tags
+        let cleanBlock = block.replace(/<\/ (?:div|p|li)>/gi, "").trim();
+        if (!cleanBlock) return;
 
-        const textContent = bullet ? `• ${line}` : line;
+        // Strip <ul> and <ol> containers
+        cleanBlock = cleanBlock.replace(/<\/?(?:ul|ol)[^>]*>/gi, "");
 
-        return new Paragraph({
-            children: [
-                new TextRun({
-                    text: textContent,
-                    size,
-                    color,
-                    bold
-                })
-            ],
-            spacing: index === lines.length - 1 ? spacing : { after: 80 }
+        // Determine if it's a list item (based on original tag)
+        const isBullet = /<li/i.test(html) && blocks[blockIndex - 1]?.includes("ul"); // basic heuristic
+
+        // Detect alignment
+        let alignment = AlignmentType.LEFT;
+        if (block.includes('text-align: center')) alignment = AlignmentType.CENTER;
+        if (block.includes('text-align: right')) alignment = AlignmentType.RIGHT;
+
+        const children = [];
+
+        // Parse inline tags (<b>, <i>) within the block
+        // This is a very simple linear parser
+        const segments = cleanBlock.split(/(<[^>]+>)/g);
+
+        let isBold = false;
+        let isItalic = false;
+
+        segments.forEach(seg => {
+            if (seg.toLowerCase().startsWith('<b') || seg.toLowerCase().startsWith('<strong')) {
+                isBold = true;
+            } else if (seg.toLowerCase().startsWith('</b') || seg.toLowerCase().startsWith('</strong')) {
+                isBold = false;
+            } else if (seg.toLowerCase().startsWith('<i') || seg.toLowerCase().startsWith('<em')) {
+                isItalic = true;
+            } else if (seg.toLowerCase().startsWith('</i') || seg.toLowerCase().startsWith('</em')) {
+                isItalic = false;
+            } else if (!seg.startsWith('<')) {
+                // Decode HTML entities (basic)
+                const text = seg
+                    .replace(/&nbsp;/g, " ")
+                    .replace(/&amp;/g, "&")
+                    .replace(/&lt;/g, "<")
+                    .replace(/&gt;/g, ">")
+                    .replace(/&quot;/g, '"');
+
+                if (text) {
+                    children.push(new TextRun({
+                        text: text,
+                        bold: isBold || options.bold,
+                        italics: isItalic,
+                        size: size,
+                        color: color
+                    }));
+                }
+            }
         });
+
+        if (children.length > 0) {
+            paragraphs.push(new Paragraph({
+                children: children,
+                alignment: alignment,
+                bullet: options.bullet || (html.toLowerCase().includes('<li>') && block.toLowerCase().includes('</li>') ? { level: 0 } : undefined),
+                spacing: { after: 120 }
+            }));
+        }
     });
+
+    // If no blocks were found but there is text (single line case)
+    if (paragraphs.length === 0 && html) {
+        const text = html.replace(/<[^>]*>?/gm, '');
+        if (text.trim()) {
+            paragraphs.push(new Paragraph({
+                children: [new TextRun({ text: text, size, color })],
+                spacing: { after: 120 }
+            }));
+        }
+    }
+
+    return paragraphs;
 }
 
 /**
@@ -600,7 +659,7 @@ export const generateDocx = async (data) => {
     );
 
     // ========== GENERAL OBSERVATIONS ==========
-    if (generalObservations) {
+    if (generalObservations && generalObservations.length > 0) {
         documentChildren.push(
             new Paragraph({
                 pageBreakBefore: true,
@@ -618,13 +677,16 @@ export const generateDocx = async (data) => {
             })
         );
 
-        // Preserve line breaks and paragraphs from user input
-        const observationParagraphs = createTextParagraphs(generalObservations, {
-            size: 24,
-            color: "374151",
-            spacing: { after: 200 }
+        generalObservations.forEach((observation) => {
+            if (observation && observation.trim() !== "") {
+                const paragraphs = createTextParagraphs(observation, {
+                    size: 24,
+                    color: "374151",
+                    spacing: { after: 200 }
+                });
+                documentChildren.push(...paragraphs);
+            }
         });
-        documentChildren.push(...observationParagraphs);
     }
 
     // ========== MAJOR HIGHLIGHTS ==========
