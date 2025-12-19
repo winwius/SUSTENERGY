@@ -320,6 +320,35 @@ export default function Home() {
         });
     };
 
+    const handlePowerParamChange = (field, subField, value) => {
+        setFormData((prev) => {
+            const newPowerParams = { ...prev.powerParameters };
+
+            if (subField) {
+                newPowerParams[field] = { ...newPowerParams[field], [subField]: value };
+            } else {
+                newPowerParams[field] = value;
+            }
+
+            // Auto-calculate Line Voltage if Phase Voltage changes
+            if (field === "phaseVoltage") {
+                const phaseVal = parseFloat(value);
+                const lineSubField = subField === "rn" ? "ry" : (subField === "yn" ? "yb" : "br");
+
+                if (!isNaN(phaseVal) && value.trim() !== "") {
+                    // Calculation rounded to 3 decimal places
+                    const lineVal = (phaseVal * Math.sqrt(3)).toFixed(3);
+                    newPowerParams.lineVoltage = { ...newPowerParams.lineVoltage, [lineSubField]: lineVal };
+                } else {
+                    // Clear the value if the input is empty to let the placeholder reappear
+                    newPowerParams.lineVoltage = { ...newPowerParams.lineVoltage, [lineSubField]: "" };
+                }
+            }
+
+            return { ...prev, powerParameters: newPowerParams };
+        });
+    };
+
     return (
         <main className="min-h-screen p-6 md:p-12 lg:p-16 pb-32 max-w-4xl mx-auto">
             <header className="mb-12 text-center pt-8">
@@ -594,66 +623,68 @@ export default function Home() {
                         <tbody className="text-slate-700">
                             {/* Line Voltage */}
                             <tr>
-                                <td rowSpan={3} className="font-semibold text-slate-700 bg-slate-50">Line Voltage</td>
+                                <td rowSpan={3} className="font-semibold text-slate-700 bg-slate-50">
+                                    Line Voltage
+                                </td>
                                 <td className="font-medium text-slate-500">RY</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.lineVoltage.ry} onChange={(e) => handleInputChange(e, "powerParameters", "lineVoltage", "ry")} /></td>
+                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.ry} readOnly placeholder="R-N * √3" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">YB</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.lineVoltage.yb} onChange={(e) => handleInputChange(e, "powerParameters", "lineVoltage", "yb")} /></td>
+                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.yb} readOnly placeholder="Y-N * √3" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">BR</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.lineVoltage.br} onChange={(e) => handleInputChange(e, "powerParameters", "lineVoltage", "br")} /></td>
+                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.br} readOnly placeholder="B-N * √3" /></td>
                             </tr>
                             {/* Phase Voltage */}
                             <tr>
                                 <td rowSpan={3} className="font-semibold text-slate-700 bg-slate-50">Phase Voltage</td>
                                 <td className="font-medium text-slate-500">R-N</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.rn} onChange={(e) => handleInputChange(e, "powerParameters", "phaseVoltage", "rn")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.rn} onChange={(e) => handlePowerParamChange("phaseVoltage", "rn", e.target.value)} /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">Y-N</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.yn} onChange={(e) => handleInputChange(e, "powerParameters", "phaseVoltage", "yn")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.yn} onChange={(e) => handlePowerParamChange("phaseVoltage", "yn", e.target.value)} /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">B-N</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.bn} onChange={(e) => handleInputChange(e, "powerParameters", "phaseVoltage", "bn")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.bn} onChange={(e) => handlePowerParamChange("phaseVoltage", "bn", e.target.value)} /></td>
                             </tr>
                             {/* Neutral to Earth */}
                             <tr>
                                 <td className="font-semibold text-slate-700 bg-slate-50">Neutral to Earth</td>
                                 <td className="font-medium text-slate-500">N-E</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.neutralEarth.ne} onChange={(e) => handleInputChange(e, "powerParameters", "neutralEarth", "ne")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.neutralEarth.ne} onChange={(e) => handlePowerParamChange("neutralEarth", "ne", e.target.value)} /></td>
                             </tr>
                             {/* Current */}
                             <tr>
                                 <td rowSpan={4} className="font-semibold text-slate-700 bg-slate-50">Current</td>
                                 <td className="font-medium text-slate-500">R</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.current.r} onChange={(e) => handleInputChange(e, "powerParameters", "current", "r")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.current.r} onChange={(e) => handlePowerParamChange("current", "r", e.target.value)} /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">Y</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.current.y} onChange={(e) => handleInputChange(e, "powerParameters", "current", "y")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.current.y} onChange={(e) => handlePowerParamChange("current", "y", e.target.value)} /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">B</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.current.b} onChange={(e) => handleInputChange(e, "powerParameters", "current", "b")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.current.b} onChange={(e) => handlePowerParamChange("current", "b", e.target.value)} /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">N</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.current.n} onChange={(e) => handleInputChange(e, "powerParameters", "current", "n")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.current.n} onChange={(e) => handlePowerParamChange("current", "n", e.target.value)} /></td>
                             </tr>
                             {/* Freq & PF */}
                             <tr>
                                 <td className="font-semibold text-slate-700 bg-slate-50">Frequency</td>
                                 <td className="text-center text-slate-400">-</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.frequency} onChange={(e) => handleInputChange(e, "powerParameters", "frequency")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.frequency} onChange={(e) => handlePowerParamChange("frequency", null, e.target.value)} /></td>
                             </tr>
                             <tr>
                                 <td className="font-semibold text-slate-700 bg-slate-50">Power Factor</td>
                                 <td className="text-center text-slate-400">-</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.powerFactor} onChange={(e) => handleInputChange(e, "powerParameters", "powerFactor")} /></td>
+                                <td><input className="input-field py-2" value={formData.powerParameters.powerFactor} onChange={(e) => handlePowerParamChange("powerFactor", null, e.target.value)} /></td>
                             </tr>
                         </tbody>
                     </table>

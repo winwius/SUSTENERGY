@@ -49,14 +49,22 @@ export const generatePdf = async (data) => {
 
     // --- Header Rendering Function ---
     const drawHeader = (docObject) => {
-        const headerH = 25;
+        const logoSize = 25; // Base square size
         // Left Logo
         if (clientLogoImg) {
-            docObject.addImage(clientLogoImg, "PNG", margin, 10, 25, 20, undefined, 'FAST');
+            const ratio = clientLogoImg.width / clientLogoImg.height;
+            let w = logoSize, h = logoSize;
+            if (ratio > 1) h = logoSize / ratio;
+            else w = logoSize * ratio;
+            docObject.addImage(clientLogoImg, "PNG", margin, 10, w, h, undefined, 'FAST');
         }
         // Right Logo
         if (sustLogoImg) {
-            docObject.addImage(sustLogoImg, "PNG", pageWidth - margin - 25, 10, 25, 20, undefined, 'FAST');
+            const ratio = sustLogoImg.width / sustLogoImg.height;
+            let w = logoSize, h = logoSize;
+            if (ratio > 1) h = logoSize / ratio;
+            else w = logoSize * ratio;
+            docObject.addImage(sustLogoImg, "PNG", pageWidth - margin - w, 10, w, h, undefined, 'FAST');
         }
     };
 

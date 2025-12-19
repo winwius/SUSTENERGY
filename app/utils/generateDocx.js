@@ -290,7 +290,7 @@ export const generateDocx = async (data) => {
                     children: [
                         new ImageRun({
                             data: clientLogoBytes,
-                            transformation: { width: 100, height: 60 },
+                            transformation: { width: 80, height: 80 },
                             type: 'png'
                         })
                     ],
@@ -327,7 +327,7 @@ export const generateDocx = async (data) => {
                     children: [
                         new ImageRun({
                             data: sustLogoBytes,
-                            transformation: { width: 100, height: 60 },
+                            transformation: { width: 80, height: 80 },
                             type: 'png'
                         })
                     ],
