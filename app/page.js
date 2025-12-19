@@ -518,8 +518,13 @@ export default function Home() {
                                     placeholder="Enter observation details..."
                                 />
                             </div>
-                            <button onClick={() => removeObservation(index)} className="text-slate-400 hover:text-red-500 p-3 transition-colors">
-                                <Trash2 size={18} />
+                            <button
+                                onClick={() => removeObservation(index)}
+                                className="flex items-center gap-2 bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold mt-2 shadow-sm border border-green-100"
+                                title="Delete Observation"
+                            >
+                                <Trash2 size={14} />
+                                <span>Delete</span>
                             </button>
                         </div>
                     ))}
@@ -562,8 +567,13 @@ export default function Home() {
                                     placeholder="Enter a major highlight..."
                                 />
                             </div>
-                            <button onClick={() => removeHighlight(index)} className="text-slate-400 hover:text-red-500 p-3 transition-colors">
-                                <Trash2 size={18} />
+                            <button
+                                onClick={() => removeHighlight(index)}
+                                className="flex items-center gap-2 bg-orange-50 text-orange-600 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold mt-2 shadow-sm border border-orange-100"
+                                title="Delete Highlight"
+                            >
+                                <Trash2 size={14} />
+                                <span>Delete</span>
                             </button>
                         </div>
                     ))}
@@ -605,7 +615,7 @@ export default function Home() {
 
                                     <button
                                         onClick={() => removeSnapshot(groupIndex)}
-                                        className="btn-add flex items-center gap-2 bg-purple-50 text-purple-600 hover:bg-red-50 hover:text-red-600 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold"
+                                        className="btn-add flex items-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold border border-purple-100"
                                         title="Delete Entire Group"
                                     >
                                         <Trash2 size={16} /> Delete
@@ -640,10 +650,11 @@ export default function Home() {
                                                     </div>
                                                     <button
                                                         onClick={() => removeImageFromGroup(groupIndex, imgIndex)}
-                                                        className="text-[10px] bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded border border-red-100 transition-colors font-bold uppercase tracking-wider"
+                                                        className="flex items-center gap-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 px-2 py-1 rounded-lg border border-purple-100 transition-colors text-[10px] font-bold shadow-sm"
                                                         title="Remove Image"
                                                     >
-                                                        Delete
+                                                        <Trash2 size={12} />
+                                                        <span>Delete</span>
                                                     </button>
                                                 </div>
                                             ))}
@@ -793,8 +804,12 @@ export default function Home() {
 
                                         {/* Mobile Delete */}
                                         <div className="absolute top-2 right-2 md:hidden">
-                                            <button onClick={() => removeLoad(index)} className="icon-btn text-slate-400 hover:text-red-500 transition-colors">
-                                                <Trash2 size={18} />
+                                            <button
+                                                onClick={() => removeLoad(index)}
+                                                className="flex items-center gap-1.5 bg-pink-50 text-pink-600 hover:bg-pink-100 px-2 py-1 rounded-lg border border-pink-100 transition-colors text-[10px] font-bold shadow-sm"
+                                            >
+                                                <Trash2 size={12} />
+                                                <span>Delete</span>
                                             </button>
                                         </div>
 
@@ -845,8 +860,13 @@ export default function Home() {
 
                                         {/* Desktop Delete */}
                                         <div className="hidden md:block md:col-span-1 text-center">
-                                            <button onClick={() => removeLoad(index)} className="icon-btn text-slate-400 hover:text-red-500 transition-colors">
-                                                <Trash2 size={18} />
+                                            <button
+                                                onClick={() => removeLoad(index)}
+                                                className="flex items-center gap-2 bg-pink-50 text-pink-600 hover:bg-pink-100 px-3 py-1.5 rounded-lg transition-all shadow-sm border border-pink-100 text-xs font-semibold"
+                                                title="Delete Row"
+                                            >
+                                                <Trash2 size={14} />
+                                                <span>Delete</span>
                                             </button>
                                         </div>
                                     </div>
@@ -901,8 +921,13 @@ export default function Home() {
                                     placeholder="Enter a conclusion..."
                                 />
                             </div>
-                            <button onClick={() => removeConclusion(index)} className="text-slate-400 hover:text-red-500 p-3 transition-colors">
-                                <Trash2 size={18} />
+                            <button
+                                onClick={() => removeConclusion(index)}
+                                className="flex items-center gap-2 bg-teal-50 text-teal-600 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold mt-2 shadow-sm border border-teal-100"
+                                title="Delete Conclusion"
+                            >
+                                <Trash2 size={14} />
+                                <span>Delete</span>
                             </button>
                         </div>
                     ))}
@@ -984,13 +1009,18 @@ export default function Home() {
                                     </label>
                                 </div>
                                 {!formData.useDefaultSignature && formData.signature && (
-                                    <button
-                                        onClick={() => setFormData({ ...formData, signature: null })}
-                                        className="icon-btn text-slate-400 hover:text-red-500 transition-colors border border-slate-200 rounded-lg p-2 hover:border-red-200 hover:bg-red-50"
-                                        title="Delete Signature"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        {!formData.useDefaultSignature && formData.signature && (
+                                            <button
+                                                onClick={() => setFormData({ ...formData, signature: null })}
+                                                className="flex items-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all shadow-sm border border-blue-100 text-xs font-semibold"
+                                                title="Delete Signature"
+                                            >
+                                                <Trash2 size={14} />
+                                                <span>Delete Signature</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>
