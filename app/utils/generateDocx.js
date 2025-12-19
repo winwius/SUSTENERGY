@@ -243,6 +243,8 @@ export const generateDocx = async (data) => {
         date,
         inspectionDate,
         client,
+        createdBy,
+        approvedBy,
         generalObservations,
         majorHighlights,
         snapshots,
@@ -383,6 +385,15 @@ export const generateDocx = async (data) => {
         })
     );
 
+    // ========== PAGE 1: COVER PAGE ==========
+    // Add vertical spacing to center content
+    documentChildren.push(
+        new Paragraph({
+            text: "",
+            spacing: { after: 1200 }
+        })
+    );
+
     // ========== TITLE ==========
     documentChildren.push(
         new Paragraph({
@@ -390,12 +401,12 @@ export const generateDocx = async (data) => {
                 new TextRun({
                     text: "ELECTRICAL SAFETY AUDIT REPORT",
                     bold: true,
-                    size: 48,
+                    size: 52,
                     color: "2563EB"
                 })
             ],
             alignment: AlignmentType.CENTER,
-            spacing: { after: 200 }
+            spacing: { after: 400 }
         })
     );
 
@@ -407,7 +418,7 @@ export const generateDocx = async (data) => {
                     new TextRun({
                         text: `BRANCH: ${branchName}`,
                         bold: true,
-                        size: 28,
+                        size: 32,
                         color: "374151"
                     })
                 ],
@@ -423,51 +434,24 @@ export const generateDocx = async (data) => {
                 children: [
                     new TextRun({
                         text: `BRANCH CODE: ${branchCode}`,
-                        size: 24,
+                        size: 28,
                         color: "6B7280"
                     })
                 ],
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 400 }
+                spacing: { after: 600 }
             })
         );
     }
 
-    // Horizontal line
-    documentChildren.push(
-        new Paragraph({
-            border: {
-                bottom: {
-                    color: "CCCCCC",
-                    space: 1,
-                    size: 6,
-                    style: BorderStyle.SINGLE
-                }
-            },
-            spacing: { after: 400 }
-        })
-    );
-
-    // ========== GENERAL INFORMATION TABLE ==========
-    documentChildren.push(
-        new Paragraph({
-            children: [
-                new TextRun({
-                    text: "General Information",
-                    bold: true,
-                    size: 32,
-                    color: "4285F4"
-                })
-            ],
-            spacing: { before: 200, after: 200 }
-        })
-    );
-
+    // ========== GENERAL INFORMATION TABLE (No heading, centered on cover) ==========
     const infoRows = [];
     if (refNo) infoRows.push(createTableRow("Reference No", refNo));
     if (date) infoRows.push(createTableRow("Report Date", formatDate(date)));
     if (inspectionDate) infoRows.push(createTableRow("Inspection Date", formatDate(inspectionDate)));
     if (client) infoRows.push(createTableRow("Client", client));
+    if (createdBy) infoRows.push(createTableRow("Created By", createdBy));
+    if (approvedBy) infoRows.push(createTableRow("Approved By", approvedBy));
 
     if (infoRows.length > 0) {
         documentChildren.push(
@@ -479,6 +463,14 @@ export const generateDocx = async (data) => {
             })
         );
     }
+
+    // Add page break after cover page
+    documentChildren.push(
+        new Paragraph({
+            text: "",
+            pageBreakBefore: true
+        })
+    );
 
     // ========== TABLE OF CONTENTS ==========
     documentChildren.push(
@@ -611,6 +603,7 @@ export const generateDocx = async (data) => {
     if (generalObservations) {
         documentChildren.push(
             new Paragraph({
+                pageBreakBefore: true,
                 children: [
                     new BookmarkStart("section_observations"),
                     new TextRun({
@@ -638,6 +631,7 @@ export const generateDocx = async (data) => {
     if (majorHighlights && majorHighlights.length > 0 && majorHighlights.some(h => h.trim() !== "")) {
         documentChildren.push(
             new Paragraph({
+                pageBreakBefore: true,
                 children: [
                     new BookmarkStart("section_highlights"),
                     new TextRun({
@@ -669,6 +663,7 @@ export const generateDocx = async (data) => {
     if (snapshots && snapshots.length > 0) {
         documentChildren.push(
             new Paragraph({
+                pageBreakBefore: true,
                 children: [
                     new BookmarkStart("section_snapshots"),
                     new TextRun({
@@ -790,37 +785,50 @@ export const generateDocx = async (data) => {
                         console.error('Error processing snapshot image:', error);
                     }
 
-                    // First image gets the Sl. No and description, subsequent images get empty cells
-                    const isFirst = i === 0;
+                    // Construct row children
+                    const rowChildren = [];
 
-                    snapshotDataRows.push(
-                        new TableRow({
-                            children: [
-                                new TableCell({
-                                    children: [
-                                        new Paragraph({
-                                            children: [new TextRun({ text: isFirst ? slNo.toString() : "", size: 24, color: "374151" })],
-                                            alignment: AlignmentType.CENTER
-                                        })
-                                    ],
-                                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                                    borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
-                                }),
-                                new TableCell({
-                                    children: [imageContent],
-                                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                                    borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
-                                }),
-                                new TableCell({
-                                    children: isFirst && description
-                                        ? createTextParagraphs(description, { size: 22, color: "374151", spacing: { after: 50 } })
-                                        : [new Paragraph({ text: "" })],
-                                    margins: { top: 100, bottom: 100, left: 150, right: 100 },
-                                    borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
-                                })
-                            ]
+                    // 1. Sl No Column (Merged)
+                    if (i === 0) {
+                        rowChildren.push(
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [new TextRun({ text: slNo.toString(), size: 24, color: "374151" })],
+                                        alignment: AlignmentType.CENTER
+                                    })
+                                ],
+                                rowSpan: groupImages.length, // Merge vertically
+                                margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                            })
+                        );
+                    }
+
+                    // 2. Image Column (Always present)
+                    rowChildren.push(
+                        new TableCell({
+                            children: [imageContent],
+                            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                            borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
                         })
                     );
+
+                    // 3. Description Column (Merged)
+                    if (i === 0) {
+                        rowChildren.push(
+                            new TableCell({
+                                children: description
+                                    ? createTextParagraphs(description, { size: 22, color: "374151", spacing: { after: 50 } })
+                                    : [new Paragraph({ text: "" })],
+                                rowSpan: groupImages.length, // Merge vertically
+                                margins: { top: 100, bottom: 100, left: 150, right: 100 },
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                            })
+                        );
+                    }
+
+                    snapshotDataRows.push(new TableRow({ children: rowChildren }));
                 }
                 slNo++;
             }
@@ -849,6 +857,7 @@ export const generateDocx = async (data) => {
     if (powerParameters) {
         documentChildren.push(
             new Paragraph({
+                pageBreakBefore: true,
                 children: [
                     new BookmarkStart("section_power"),
                     new TextRun({
@@ -896,6 +905,7 @@ export const generateDocx = async (data) => {
     if (connectedLoad && connectedLoad.length > 0) {
         documentChildren.push(
             new Paragraph({
+                pageBreakBefore: true,
                 children: [
                     new BookmarkStart("section_load"),
                     new TextRun({
@@ -936,6 +946,7 @@ export const generateDocx = async (data) => {
     if (conclusions && conclusions.length > 0) {
         documentChildren.push(
             new Paragraph({
+                pageBreakBefore: true,
                 children: [
                     new BookmarkStart("section_conclusions"),
                     new TextRun({
@@ -967,6 +978,7 @@ export const generateDocx = async (data) => {
     // ========== SIGNATORY SECTION ==========
     documentChildren.push(
         new Paragraph({
+            pageBreakBefore: true,
             children: [
                 new TextRun({
                     text: "For Sustenergy Foundation",

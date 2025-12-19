@@ -53,6 +53,8 @@ export default function Home() {
         date: "",
         inspectionDate: "",
         client: "",
+        createdBy: "",
+        approvedBy: "",
         generalObservations: "",
         snapshots: [],
         powerParameters: {
@@ -385,6 +387,14 @@ export default function Home() {
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-600">Client Name</label>
                             <input placeholder="e.g. Acme Corp" className="input-field" value={formData.client} onChange={(e) => handleInputChange(e, null, "client")} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-600">Created By</label>
+                            <input placeholder="e.g. John Doe" className="input-field" value={formData.createdBy} onChange={(e) => handleInputChange(e, null, "createdBy")} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-600">Approved By</label>
+                            <input placeholder="e.g. Jane Smith" className="input-field" value={formData.approvedBy} onChange={(e) => handleInputChange(e, null, "approvedBy")} />
                         </div>
                     </div>
                 </CollapsibleCard>
