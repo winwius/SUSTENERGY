@@ -632,29 +632,31 @@ export default function Home() {
                                         />
                                     </div>
 
-                                    {/* Image Grid */}
-                                    <div>
-                                        <div className="flex flex-wrap gap-3">
+                                    {/* Responsive Image Grid */}
+                                    <div className="py-2">
+                                        <div className="flex flex-wrap gap-4">
                                             {group.images.map((img, imgIndex) => (
-                                                <div key={imgIndex} className="flex flex-col items-center gap-2">
+                                                <div key={imgIndex} className="relative group/img">
                                                     <div
-                                                        className="bg-white rounded-lg border border-slate-200 flex items-center justify-center shadow-sm"
-                                                        style={{ width: '80px', height: '64px', minWidth: '80px' }}
+                                                        className="bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+                                                        style={{ width: '150px', height: '120px' }}
                                                     >
                                                         <img
                                                             src={img}
                                                             alt={`Snapshot ${imgIndex + 1} `}
-                                                            className="w-full h-full object-contain rounded-lg"
-                                                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                                            className="w-full h-full object-cover"
+                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                         />
                                                     </div>
+
+                                                    {/* Delete Button as Overlay Badge */}
                                                     <button
                                                         onClick={() => removeImageFromGroup(groupIndex, imgIndex)}
-                                                        className="flex items-center gap-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 px-2 py-1 rounded-lg border border-purple-100 transition-colors text-[10px] font-bold shadow-sm"
+                                                        className="absolute -top-2 -right-2 flex items-center gap-1.5 bg-purple-50 text-purple-600 hover:bg-red-50 hover:text-red-600 p-1.5 rounded-full border border-purple-200 hover:border-red-200 transition-all shadow-md z-10"
                                                         title="Remove Image"
                                                     >
-                                                        <Trash2 size={12} />
-                                                        <span>Delete</span>
+                                                        <Trash2 size={14} />
+                                                        <span className="text-[10px] font-bold pr-1">Delete</span>
                                                     </button>
                                                 </div>
                                             ))}
