@@ -10,6 +10,7 @@ export const generatePdf = async (data) => {
         inspectionDate,
         client,
         generalObservations,
+        majorHighlights,
         snapshots,
         powerParameters,
         connectedLoad,
@@ -37,18 +38,172 @@ export const generatePdf = async (data) => {
     };
 
     const addText = (text, x, y, size = 10, align = "left", weight = "normal") => {
-        // Strip HTML tags for PDF text
+        // Strip HTML tags for PDF text as fallback
         const cleanText = (text || "").replace(/<[^>]*>?/gm, '');
         doc.setFontSize(size);
         doc.setFont("helvetica", weight);
         doc.text(cleanText, x, y, { align: align });
     };
 
+    /**
+     * Splits HTML into paragraphs and segments for rich text rendering in PDF
+     */
+    const parseHtmlForPdf = (html) => {
+        if (!html) return [];
+
+        // Replace <br> and other block-like tags that should start a new line
+        // but keep the tag structure for segmenting
+        let processedHtml = html.replace(/<br\s*\/?>/gi, '</p><p>');
+
+        // Split into block elements (paragraphs, div, li)
+        const blockTags = ['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+        const splitRegex = new RegExp(`(<(?:${blockTags.join('|')})[^>]*>|<\\/(?:${blockTags.join('|')})>)`, 'i');
+        const parts = processedHtml.split(splitRegex);
+
+        const paragraphs = [];
+        let currentSegments = [];
+        let activeStyles = { bold: false, italic: false };
+        let isOrderedList = false;
+        let listIndex = 1;
+
+        parts.forEach(part => {
+            if (!part) return;
+
+            const lowerPart = part.toLowerCase();
+
+            // Handle block start tags
+            if (lowerPart.startsWith('<') && !lowerPart.startsWith('</')) {
+                if (lowerPart.startsWith('<ol')) isOrderedList = true;
+                if (lowerPart.startsWith('<ul')) isOrderedList = false;
+
+                if (lowerPart.startsWith('<li')) {
+                    const prefix = isOrderedList ? `${listIndex++}. ` : "• ";
+                    currentSegments.push({ text: prefix, ...activeStyles });
+                }
+                return;
+            }
+
+            // Handle block end tags
+            if (lowerPart.startsWith('</')) {
+                if (lowerPart.startsWith('</ol') || lowerPart.startsWith('</ul')) {
+                    listIndex = 1;
+                }
+                if (currentSegments.length > 0) {
+                    paragraphs.push(currentSegments);
+                    currentSegments = [];
+                }
+                return;
+            }
+
+            // Handle inline tags and text
+            const inlineParts = part.split(/(<[^>]+>)/g);
+            inlineParts.forEach(seg => {
+                if (!seg) return;
+                const lowerSeg = seg.toLowerCase();
+
+                if (lowerSeg.startsWith('<b') || lowerSeg.startsWith('<strong')) {
+                    activeStyles.bold = true;
+                } else if (lowerSeg.startsWith('</b') || lowerSeg.startsWith('</strong')) {
+                    activeStyles.bold = false;
+                } else if (lowerSeg.startsWith('<i') || lowerSeg.startsWith('<em')) {
+                    activeStyles.italic = true;
+                } else if (lowerSeg.startsWith('</i') || lowerSeg.startsWith('</em')) {
+                    activeStyles.italic = false;
+                } else if (!seg.startsWith('<')) {
+                    // It's text
+                    const cleanText = seg
+                        .replace(/&nbsp;/g, " ")
+                        .replace(/&amp;/g, "&")
+                        .replace(/&lt;/g, "<")
+                        .replace(/&gt;/g, ">")
+                        .replace(/&quot;/g, '"');
+                    if (cleanText) {
+                        currentSegments.push({ text: cleanText, ...activeStyles });
+                    }
+                }
+            });
+        });
+
+        // Residual segments
+        if (currentSegments.length > 0) {
+            paragraphs.push(currentSegments);
+        }
+
+        return paragraphs;
+    };
+
+    /**
+     * Renders rich text (segments) line by line with page break support
+     */
+    const renderRichText = (html, x, y, maxWidth) => {
+        const paragraphs = parseHtmlForPdf(html);
+        let currentY = y;
+
+        paragraphs.forEach(segments => {
+            // First, calculate lines for this paragraph
+            // We need to group segments into lines based on maxWidth
+            let lines = [[]];
+            let currentLineWidth = 0;
+
+            segments.forEach(seg => {
+                const words = seg.text.split(/(\s+)/);
+                words.forEach(word => {
+                    const fontStyle = (seg.bold && seg.italic) ? "bolditalic" : (seg.bold ? "bold" : (seg.italic ? "italic" : "normal"));
+                    doc.setFont("helvetica", fontStyle);
+                    doc.setFontSize(10);
+
+                    const wordWidth = doc.getTextWidth(word);
+
+                    if (currentLineWidth + wordWidth > maxWidth && currentLineWidth > 0) {
+                        // Start new line
+                        lines.push([]);
+                        currentLineWidth = 0;
+                        // Avoid leading spaces on new lines
+                        if (word.trim() === "") return;
+                    }
+
+                    lines[lines.length - 1].push({ text: word, style: fontStyle });
+                    currentLineWidth += wordWidth;
+                });
+            });
+
+            // Draw lines
+            lines.forEach(line => {
+                // Page break check
+                if (currentY > pageHeight - 25) {
+                    doc.addPage();
+                    drawHeader(doc);
+                    currentY = 40;
+                }
+
+                let currentX = x;
+                line.forEach(item => {
+                    doc.setFont("helvetica", item.style);
+                    doc.text(item.text, currentX, currentY);
+                    currentX += doc.getTextWidth(item.text);
+                });
+                currentY += 6; // Line height
+            });
+
+            currentY += 2; // Paragraph spacing
+        });
+
+        return currentY;
+    };
+
     const stripHtml = (html) => {
         if (!html) return "";
-        return html
-            .replace(/<li[^>]*>/gi, "• ")
-            .replace(/<(?:div|p|br)[^>]*>/gi, "\n")
+        let text = html.replace(/<(?:div|p|br)[^>]*>/gi, "\n");
+        const listRegex = /<(ul|ol)[^>]*>([\s\S]*?)<\/\1>/gi;
+        text = text.replace(listRegex, (match, type, content) => {
+            const isOrdered = type.toLowerCase() === 'ol';
+            let itemCount = 1;
+            return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (liMatch, liContent) => {
+                const prefix = isOrdered ? `${itemCount++}. ` : "• ";
+                return `\n${prefix}${liContent}`;
+            });
+        });
+        return text
             .replace(/<[^>]*>?/gm, "")
             .replace(/&nbsp;/g, " ")
             .replace(/&amp;/g, "&")
@@ -173,44 +328,53 @@ export const generatePdf = async (data) => {
 
     // Content Pages Start
     doc.addPage();
-    // Header Hook for subsequent pages
-    // Note: jsPDF doesn't automatically redraw on existing pages, but for new pages we can use a loop or just draw as we go. 
-    // Since we are adding content sequentially, we can just drawHeader at the top of the new page.
     drawHeader(doc);
     currentY = 40;
 
     // 1. General Observations
     addText("1.0 Audit - General observations", margin, currentY, 12, "left", "bold");
-    currentY += 7;
+    currentY += 10;
 
-    // Wrap text for observations
     if (generalObservations && generalObservations.length > 0) {
         generalObservations.forEach((observation) => {
             if (observation && observation.trim() !== "") {
-                const cleanObs = stripHtml(observation);
-                const splitObs = doc.splitTextToSize(cleanObs, pageWidth - (2 * margin));
-
-                // Add page if needed
-                if (currentY + (splitObs.length * 5) > pageHeight - margin) {
-                    doc.addPage();
-                    drawHeader(doc);
-                    currentY = 40;
-                }
-
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(10);
-                doc.text(splitObs, margin, currentY);
-                currentY += (splitObs.length * 5) + 5;
+                currentY = renderRichText(observation, margin, currentY, pageWidth - (2 * margin));
+                currentY += 5;
             }
         });
-        currentY += 5;
     } else {
         addText("No observations.", margin, currentY, 10, "left", "normal");
         currentY += 10;
     }
 
-    // 2. Snapshots
-    addText("2.0 Snapshots of Electrical Installation", margin, currentY, 12, "left", "bold");
+    // 2. Major Highlights
+    if (currentY > pageHeight - 30) {
+        doc.addPage();
+        drawHeader(doc);
+        currentY = 40;
+    }
+    addText("2.0 Major Highlights", margin, currentY, 12, "left", "bold");
+    currentY += 10;
+
+    if (majorHighlights && majorHighlights.length > 0) {
+        majorHighlights.forEach((highlight) => {
+            if (highlight && highlight.trim() !== "") {
+                currentY = renderRichText(highlight, margin, currentY, pageWidth - (2 * margin));
+                currentY += 5;
+            }
+        });
+    } else {
+        addText("No major highlights.", margin, currentY, 10, "left", "normal");
+        currentY += 10;
+    }
+
+    // 3. Snapshots
+    if (currentY > pageHeight - 30) {
+        doc.addPage();
+        drawHeader(doc);
+        currentY = 40;
+    }
+    addText("3.0 Snapshots of Electrical Installation", margin, currentY, 12, "left", "bold");
     currentY += 10;
 
     // We will build a body for the snapshot table. Images need to be handled carefully in autoTable.
@@ -279,7 +443,7 @@ export const generatePdf = async (data) => {
 
     currentY = doc.lastAutoTable.finalY + 15;
 
-    // 3. Power Parameters
+    // 4. Power Parameters
     // Check if space is sufficient, else add page
     if (currentY > pageHeight - 50) {
         doc.addPage();
@@ -287,7 +451,7 @@ export const generatePdf = async (data) => {
         currentY = 40;
     }
 
-    addText("3.0 Power Parameters", margin, currentY, 12, "left", "bold");
+    addText("4.0 Power Parameters", margin, currentY, 12, "left", "bold");
     currentY += 7;
 
     const pp = powerParameters;
@@ -323,14 +487,14 @@ export const generatePdf = async (data) => {
 
     currentY = doc.lastAutoTable.finalY + 15;
 
-    // 4. Connected Load
+    // 5. Connected Load
     if (currentY > pageHeight - 50) {
         doc.addPage();
         drawHeader(doc);
         currentY = 40;
     }
 
-    addText("4.0 Connected Load Detail", margin, currentY, 12, "left", "bold");
+    addText("5.0 Connected Load Detail", margin, currentY, 12, "left", "bold");
     currentY += 7;
 
     const loadBody = connectedLoad.map((l, i) => [i + 1, l.type, l.power, l.qty, l.subTotal]);
@@ -353,29 +517,27 @@ export const generatePdf = async (data) => {
 
     currentY = doc.lastAutoTable.finalY + 15;
 
-    // 5. Conclusions
+    // 6. Conclusions
     if (currentY > pageHeight - 50) {
         doc.addPage();
         drawHeader(doc);
         currentY = 40;
     }
 
-    addText("5.0 Conclusions", margin, currentY, 12, "left", "bold");
-    currentY += 7;
+    addText("6.0 Conclusions", margin, currentY, 12, "left", "bold");
+    currentY += 10;
 
-    conclusions.forEach(c => {
-        const cleanC = stripHtml(c);
-        if (!cleanC) return;
-        const splitC = doc.splitTextToSize(`• ${cleanC}`, pageWidth - (2 * margin));
-        if (currentY + (splitC.length * 5) > pageHeight - 40) { // Check space
-            doc.addPage();
-            drawHeader(doc);
-            currentY = 40;
-        }
-        doc.setFontSize(10);
-        doc.text(splitC, margin, currentY);
-        currentY += (splitC.length * 5) + 2;
-    });
+    if (conclusions && conclusions.length > 0) {
+        conclusions.forEach(conclusion => {
+            if (conclusion && conclusion.trim() !== "") {
+                currentY = renderRichText(conclusion, margin, currentY, pageWidth - (2 * margin));
+                currentY += 5;
+            }
+        });
+    } else {
+        addText("No conclusions.", margin, currentY, 10, "left", "normal");
+        currentY += 10;
+    }
 
     currentY += 20;
 

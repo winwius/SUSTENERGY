@@ -29,23 +29,36 @@ import {
  * Custom download function for reliable file downloads
  */
 function downloadFile(blob, fileName) {
-    const docxBlob = new Blob([blob], {
+    // If it's already a blob, use it directly. Otherwise wrap it.
+    const docxBlob = (blob instanceof Blob) ? blob : new Blob([blob], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
 
+    // Support for IE/Edge Legacy
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(docxBlob, fileName);
+        return;
+    }
+
     const url = window.URL.createObjectURL(docxBlob);
     const a = document.createElement('a');
+
+    // Styling to ensure it's not visible
     a.style.display = 'none';
     a.href = url;
     a.download = fileName;
 
+    // Append to body is required for some browsers (like Firefox)
     document.body.appendChild(a);
+
+    // Trigger download
     a.click();
 
+    // Clean up
     window.setTimeout(function () {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-    }, 250);
+    }, 200);
 }
 
 /**
@@ -188,114 +201,133 @@ function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
  * @param {string} html - HTML content from rich text editor
  * @param {object} options - Default styling options
  */
+/**
+ * Create paragraphs from HTML content using DOMParser for reliability
+ * @param {string} html - HTML content from rich text editor
+ * @param {object} options - Default styling options
+ */
 function createTextParagraphs(html, options = {}) {
     if (!html) return [];
 
     const {
         size = 24,
-        color = "374151"
+        color = "374151",
+        spacing = { after: 120 }
     } = options;
 
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html || "", 'text/html');
+    const root = doc.body;
     const paragraphs = [];
 
-    // Simple parser to handle common rich text editor output
-    // Break down the HTML into block-level elements
-    // We use a more robust split that captures the tag to identify bullets
-    const blocks = html.split(/(<(?:p|div|li)[^>]*>)/i);
+    // Tracks current list state
+    let listStack = [];
 
-    let currentTagName = "";
-
-    blocks.forEach((block) => {
-        if (!block) return;
-
-        // If it's an opening tag of a block-level element, store it and move to next iteration
-        if (/^<(?:p|div|li)/i.test(block)) {
-            currentTagName = block.toLowerCase();
-            return;
+    const processNode = (node, currentStyles = {}, alignment = AlignmentType.LEFT) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent;
+            if (text) {
+                return [new TextRun({
+                    text: text,
+                    bold: currentStyles.bold || false,
+                    italics: currentStyles.italic || false,
+                    underline: currentStyles.underline ? {} : undefined,
+                    size: size,
+                    color: currentStyles.color || color
+                })];
+            }
+            return [];
         }
 
-        // Clean up closing tags and other containers
-        let cleanBlock = block
-            .replace(/<\/(?:p|div|li)>/gi, "")
-            .replace(/<\/?(?:ul|ol)[^>]*>/gi, "")
-            .trim();
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName.toLowerCase();
+            const styles = { ...currentStyles };
 
-        if (!cleanBlock) return;
+            // Handle inline styles
+            if (tag === 'b' || tag === 'strong') styles.bold = true;
+            if (tag === 'i' || tag === 'em') styles.italic = true;
+            if (tag === 'u') styles.underline = true;
+            if (tag === 'span') {
+                if (node.style.fontWeight === 'bold' || node.style.fontWeight > 500) styles.bold = true;
+                if (node.style.fontStyle === 'italic') styles.italic = true;
+                if (node.style.textDecoration.includes('underline')) styles.underline = true;
+                if (node.style.color) styles.color = node.style.color.replace('#', '');
+            }
 
-        // Detect alignment from the tag we stored
-        let alignment = AlignmentType.LEFT;
-        if (currentTagName.includes('text-align: center')) alignment = AlignmentType.CENTER;
-        if (currentTagName.includes('text-align: right')) alignment = AlignmentType.RIGHT;
+            // Handle alignment (only if not already set by parent)
+            let nodeAlignment = alignment;
+            const textAlign = node.style.textAlign || node.getAttribute('align');
+            if (textAlign === 'center') nodeAlignment = AlignmentType.CENTER;
+            else if (textAlign === 'right') nodeAlignment = AlignmentType.RIGHT;
+            else if (textAlign === 'justify') nodeAlignment = AlignmentType.JUSTIFIED;
 
-        const children = [];
+            // Block elements create paragraphs
+            const blockTags = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'];
+            const listTags = ['ul', 'ol'];
 
-        // Parse inline tags (<b>, <i>, <br>) within the block
-        const segments = cleanBlock.split(/(<[^>]+>)/g);
+            if (blockTags.includes(tag)) {
+                const children = [];
+                node.childNodes.forEach(child => {
+                    children.push(...processNode(child, styles, nodeAlignment));
+                });
 
-        let isBold = !!options.bold;
-        let isItalic = false;
-
-        segments.forEach(seg => {
-            if (!seg) return;
-            const lowerSeg = seg.toLowerCase();
-
-            if (lowerSeg.startsWith('<b') || lowerSeg.startsWith('<strong')) {
-                isBold = true;
-            } else if (lowerSeg.startsWith('</b') || lowerSeg.startsWith('</strong')) {
-                isBold = !!options.bold;
-            } else if (lowerSeg.startsWith('<i') || lowerSeg.startsWith('<em')) {
-                isItalic = true;
-            } else if (lowerSeg.startsWith('</i') || lowerSeg.startsWith('</em')) {
-                isItalic = false;
-            } else if (lowerSeg === '<br>' || lowerSeg === '<br/>' || lowerSeg === '<br />') {
-                children.push(new TextRun({ text: "", break: 1 }));
-            } else if (!seg.startsWith('<')) {
-                // Decode HTML entities (basic)
-                const text = seg
-                    .replace(/&nbsp;/g, " ")
-                    .replace(/&amp;/g, "&")
-                    .replace(/&lt;/g, "<")
-                    .replace(/&gt;/g, ">")
-                    .replace(/&quot;/g, '"');
-
-                if (text) {
-                    children.push(new TextRun({
-                        text: text,
-                        bold: isBold,
-                        italics: isItalic,
-                        size: size,
-                        color: color
-                    }));
+                // Get numbering if inside a list
+                let numbering = undefined;
+                if (tag === 'li') {
+                    const parentTag = node.parentNode.tagName.toLowerCase();
+                    if (parentTag === 'ol') {
+                        numbering = { reference: 'ordered-list', level: 0 };
+                    } else {
+                        numbering = { reference: 'unordered-list', level: 0 };
+                    }
                 }
-            }
-        });
 
-        if (children.length > 0) {
-            // Determine if it should be a bullet
-            let bullet = undefined;
-            if (options.bullet) {
-                bullet = { level: 0 };
-            } else if (currentTagName.includes('<li')) {
-                bullet = { level: 0 };
+                paragraphs.push(new Paragraph({
+                    children: children,
+                    alignment: nodeAlignment,
+                    numbering: numbering,
+                    spacing: spacing
+                }));
+                return []; // Already added as paragraph
+            } else if (listTags.includes(tag)) {
+                node.childNodes.forEach(child => {
+                    processNode(child, styles, nodeAlignment);
+                });
+                return [];
+            } else if (tag === 'br') {
+                return [new TextRun({ text: "", break: 1 })];
+            } else {
+                // Non-block element, just process children and return segments
+                const segments = [];
+                node.childNodes.forEach(child => {
+                    segments.push(...processNode(child, styles, nodeAlignment));
+                });
+                return segments;
             }
+        }
+        return [];
+    };
 
+    // Process top-level nodes
+    root.childNodes.forEach(node => {
+        const segments = processNode(node);
+        // If segments remain (e.g. top level text node), wrap in paragraph
+        if (segments.length > 0) {
             paragraphs.push(new Paragraph({
-                children: children,
-                alignment: alignment,
-                bullet: bullet,
-                spacing: { after: 120 }
+                children: segments,
+                alignment: AlignmentType.LEFT,
+                spacing: spacing
             }));
         }
     });
 
-    // If no blocks were found but there is text (single line case)
+    // Fallback
     if (paragraphs.length === 0 && html) {
         const text = html.replace(/<[^>]*>?/gm, '').trim();
         if (text) {
             paragraphs.push(new Paragraph({
-                children: [new TextRun({ text: text, size, color, bold: options.bold })],
-                bullet: options.bullet ? { level: 0 } : undefined,
-                spacing: { after: 120 }
+                children: [new TextRun({ text: text, size, color })],
+                spacing: spacing
             }));
         }
     }
@@ -734,7 +766,6 @@ export const generateDocx = async (data) => {
                 const highlightParagraphs = createTextParagraphs(highlight, {
                     size: 24,
                     color: "374151",
-                    bullet: { level: 0 },
                     spacing: { after: 150 }
                 });
                 documentChildren.push(...highlightParagraphs);
@@ -1048,7 +1079,6 @@ export const generateDocx = async (data) => {
                 const conclusionParagraphs = createTextParagraphs(conclusion, {
                     size: 24,
                     color: "374151",
-                    bullet: { level: 0 },
                     spacing: { after: 150 }
                 });
                 documentChildren.push(...conclusionParagraphs);
@@ -1161,25 +1191,69 @@ export const generateDocx = async (data) => {
     ];
 
     // ========== CREATE DOCUMENT ==========
-    const doc = new Document({
-        sections: [{
-            properties: {},
-            headers: {
-                default: new Header({
-                    children: headerChildren
-                })
+    let doc;
+    try {
+        console.log("Constructing DOCX object...");
+        doc = new Document({
+            numbering: {
+                config: [
+                    {
+                        reference: "ordered-list",
+                        levels: [
+                            {
+                                level: 0,
+                                format: "decimal",
+                                text: "%1.",
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 720, hanging: 360 },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        reference: "unordered-list",
+                        levels: [
+                            {
+                                level: 0,
+                                format: "bullet",
+                                text: "\u25CF",
+                                style: {
+                                    paragraph: {
+                                        indent: { left: 720, hanging: 360 },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
             },
-            footers: {
-                default: new Footer({
-                    children: footerChildren
-                })
-            },
-            children: documentChildren
-        }]
-    });
+            sections: [{
+                properties: {},
+                headers: {
+                    default: new Header({
+                        children: headerChildren
+                    })
+                },
+                footers: {
+                    default: new Footer({
+                        children: footerChildren
+                    })
+                },
+                children: documentChildren
+            }]
+        });
+        console.log("DOCX object constructed successfully.");
+    } catch (error) {
+        console.error("Error constructing DOCX object:", error);
+        alert("Error preparing document content: " + error.message);
+        return;
+    }
 
     // Generate and save file
     try {
+        console.log("Packing DOCX to blob...");
         const blob = await Packer.toBlob(doc);
         const safeBranchName = (branchName || "Draft").replace(/[^a-z0-9\s-_]/gi, '').trim().replace(/\s+/g, '_');
         const fileName = `Audit_Report_${safeBranchName}.docx`;
@@ -1188,7 +1262,7 @@ export const generateDocx = async (data) => {
         downloadFile(blob, fileName);
         console.log("File saved successfully");
     } catch (error) {
-        console.error("Error generating document:", error);
-        alert("Error generating document. Please check console for details.");
+        console.error("Error packing or downloading document:", error);
+        alert("Error during file generation: " + error.message);
     }
 };
