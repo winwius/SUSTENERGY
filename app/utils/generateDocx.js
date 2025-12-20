@@ -199,43 +199,56 @@ function createTextParagraphs(html, options = {}) {
     const paragraphs = [];
 
     // Simple parser to handle common rich text editor output
-    // This breaks down the HTML into block-level elements (div, p, li)
-    const blocks = html.split(/<(?:div|p|li)[^>]*>/i);
+    // Break down the HTML into block-level elements
+    // We use a more robust split that captures the tag to identify bullets
+    const blocks = html.split(/(<(?:p|div|li)[^>]*>)/i);
 
-    blocks.forEach((block, blockIndex) => {
-        // Clean up closing tags
-        let cleanBlock = block.replace(/<\/ (?:div|p|li)>/gi, "").trim();
+    let currentTagName = "";
+
+    blocks.forEach((block) => {
+        if (!block) return;
+
+        // If it's an opening tag of a block-level element, store it and move to next iteration
+        if (/^<(?:p|div|li)/i.test(block)) {
+            currentTagName = block.toLowerCase();
+            return;
+        }
+
+        // Clean up closing tags and other containers
+        let cleanBlock = block
+            .replace(/<\/(?:p|div|li)>/gi, "")
+            .replace(/<\/?(?:ul|ol)[^>]*>/gi, "")
+            .trim();
+
         if (!cleanBlock) return;
 
-        // Strip <ul> and <ol> containers
-        cleanBlock = cleanBlock.replace(/<\/?(?:ul|ol)[^>]*>/gi, "");
-
-        // Determine if it's a list item (based on original tag)
-        const isBullet = /<li/i.test(html) && blocks[blockIndex - 1]?.includes("ul"); // basic heuristic
-
-        // Detect alignment
+        // Detect alignment from the tag we stored
         let alignment = AlignmentType.LEFT;
-        if (block.includes('text-align: center')) alignment = AlignmentType.CENTER;
-        if (block.includes('text-align: right')) alignment = AlignmentType.RIGHT;
+        if (currentTagName.includes('text-align: center')) alignment = AlignmentType.CENTER;
+        if (currentTagName.includes('text-align: right')) alignment = AlignmentType.RIGHT;
 
         const children = [];
 
-        // Parse inline tags (<b>, <i>) within the block
-        // This is a very simple linear parser
+        // Parse inline tags (<b>, <i>, <br>) within the block
         const segments = cleanBlock.split(/(<[^>]+>)/g);
 
-        let isBold = false;
+        let isBold = !!options.bold;
         let isItalic = false;
 
         segments.forEach(seg => {
-            if (seg.toLowerCase().startsWith('<b') || seg.toLowerCase().startsWith('<strong')) {
+            if (!seg) return;
+            const lowerSeg = seg.toLowerCase();
+
+            if (lowerSeg.startsWith('<b') || lowerSeg.startsWith('<strong')) {
                 isBold = true;
-            } else if (seg.toLowerCase().startsWith('</b') || seg.toLowerCase().startsWith('</strong')) {
-                isBold = false;
-            } else if (seg.toLowerCase().startsWith('<i') || seg.toLowerCase().startsWith('<em')) {
+            } else if (lowerSeg.startsWith('</b') || lowerSeg.startsWith('</strong')) {
+                isBold = !!options.bold;
+            } else if (lowerSeg.startsWith('<i') || lowerSeg.startsWith('<em')) {
                 isItalic = true;
-            } else if (seg.toLowerCase().startsWith('</i') || seg.toLowerCase().startsWith('</em')) {
+            } else if (lowerSeg.startsWith('</i') || lowerSeg.startsWith('</em')) {
                 isItalic = false;
+            } else if (lowerSeg === '<br>' || lowerSeg === '<br/>' || lowerSeg === '<br />') {
+                children.push(new TextRun({ text: "", break: 1 }));
             } else if (!seg.startsWith('<')) {
                 // Decode HTML entities (basic)
                 const text = seg
@@ -248,7 +261,7 @@ function createTextParagraphs(html, options = {}) {
                 if (text) {
                     children.push(new TextRun({
                         text: text,
-                        bold: isBold || options.bold,
+                        bold: isBold,
                         italics: isItalic,
                         size: size,
                         color: color
@@ -258,10 +271,18 @@ function createTextParagraphs(html, options = {}) {
         });
 
         if (children.length > 0) {
+            // Determine if it should be a bullet
+            let bullet = undefined;
+            if (options.bullet) {
+                bullet = { level: 0 };
+            } else if (currentTagName.includes('<li')) {
+                bullet = { level: 0 };
+            }
+
             paragraphs.push(new Paragraph({
                 children: children,
                 alignment: alignment,
-                bullet: options.bullet || (html.toLowerCase().includes('<li>') && block.toLowerCase().includes('</li>') ? { level: 0 } : undefined),
+                bullet: bullet,
                 spacing: { after: 120 }
             }));
         }
@@ -269,10 +290,11 @@ function createTextParagraphs(html, options = {}) {
 
     // If no blocks were found but there is text (single line case)
     if (paragraphs.length === 0 && html) {
-        const text = html.replace(/<[^>]*>?/gm, '');
-        if (text.trim()) {
+        const text = html.replace(/<[^>]*>?/gm, '').trim();
+        if (text) {
             paragraphs.push(new Paragraph({
-                children: [new TextRun({ text: text, size, color })],
+                children: [new TextRun({ text: text, size, color, bold: options.bold })],
+                bullet: options.bullet ? { level: 0 } : undefined,
                 spacing: { after: 120 }
             }));
         }
@@ -349,8 +371,7 @@ export const generateDocx = async (data) => {
                     children: [
                         new ImageRun({
                             data: clientLogoBytes,
-                            transformation: { width: 80, height: 80 },
-                            type: 'png'
+                            transformation: { width: 80, height: 80 }
                         })
                     ],
                     alignment: AlignmentType.LEFT
@@ -386,8 +407,7 @@ export const generateDocx = async (data) => {
                     children: [
                         new ImageRun({
                             data: sustLogoBytes,
-                            transformation: { width: 80, height: 80 },
-                            type: 'png'
+                            transformation: { width: 80, height: 80 }
                         })
                     ],
                     alignment: AlignmentType.RIGHT
@@ -714,7 +734,7 @@ export const generateDocx = async (data) => {
                 const highlightParagraphs = createTextParagraphs(highlight, {
                     size: 24,
                     color: "374151",
-                    bullet: true,
+                    bullet: { level: 0 },
                     spacing: { after: 150 }
                 });
                 documentChildren.push(...highlightParagraphs);
@@ -837,8 +857,7 @@ export const generateDocx = async (data) => {
                                         transformation: {
                                             width: 200,
                                             height: 150
-                                        },
-                                        type: 'png'
+                                        }
                                     })
                                 ]
                             });
@@ -1029,7 +1048,7 @@ export const generateDocx = async (data) => {
                 const conclusionParagraphs = createTextParagraphs(conclusion, {
                     size: 24,
                     color: "374151",
-                    bullet: true,
+                    bullet: { level: 0 },
                     spacing: { after: 150 }
                 });
                 documentChildren.push(...conclusionParagraphs);
@@ -1066,8 +1085,7 @@ export const generateDocx = async (data) => {
                                 transformation: {
                                     width: 150,
                                     height: 75
-                                },
-                                type: 'png'
+                                }
                             })
                         ],
                         spacing: { after: 100 }
