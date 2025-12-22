@@ -71,6 +71,14 @@ export default function Home() {
             current: { r: "", y: "", b: "", n: "" },
             frequency: "50Hz",
             powerFactor: "",
+            remarks: {
+                ry: "", yb: "", br: "",
+                rn: "", yn: "", bn: "",
+                ne: "",
+                r: "", y: "", b: "", n: "",
+                frequency: "",
+                powerFactor: ""
+            }
         },
         connectedLoad: [],
         conclusions: [""],
@@ -715,73 +723,87 @@ export default function Home() {
                                 <th className="w-1/4">Parameter</th>
                                 <th className="w-1/6">Test Point</th>
                                 <th>Value</th>
+                                <th className="w-1/4 pr-10">Remarks</th>
                             </tr>
                         </thead>
                         <tbody className="text-slate-700">
                             {/* Line Voltage */}
                             <tr>
                                 <td rowSpan={3} className="font-semibold text-slate-700 bg-slate-50">
-                                    Line Voltage
+                                    Line Voltage (Auto Calculated)
                                 </td>
                                 <td className="font-medium text-slate-500">RY</td>
                                 <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.ry} readOnly placeholder="R-N * √3" /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.ry} onChange={(e) => handlePowerParamChange("remarks", "ry", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">YB</td>
                                 <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.yb} readOnly placeholder="Y-N * √3" /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.yb} onChange={(e) => handlePowerParamChange("remarks", "yb", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">BR</td>
                                 <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.br} readOnly placeholder="B-N * √3" /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.br} onChange={(e) => handlePowerParamChange("remarks", "br", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             {/* Phase Voltage */}
                             <tr>
                                 <td rowSpan={3} className="font-semibold text-slate-700 bg-slate-50">Phase Voltage</td>
                                 <td className="font-medium text-slate-500">R-N</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.rn} onChange={(e) => handlePowerParamChange("phaseVoltage", "rn", e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.rn} onChange={(e) => handlePowerParamChange("remarks", "rn", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">Y-N</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.yn} onChange={(e) => handlePowerParamChange("phaseVoltage", "yn", e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.yn} onChange={(e) => handlePowerParamChange("remarks", "yn", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">B-N</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.bn} onChange={(e) => handlePowerParamChange("phaseVoltage", "bn", e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.bn} onChange={(e) => handlePowerParamChange("remarks", "bn", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             {/* Neutral to Earth */}
                             <tr>
                                 <td className="font-semibold text-slate-700 bg-slate-50">Neutral to Earth</td>
                                 <td className="font-medium text-slate-500">N-E</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.neutralEarth.ne} onChange={(e) => handlePowerParamChange("neutralEarth", "ne", e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.ne} onChange={(e) => handlePowerParamChange("remarks", "ne", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             {/* Current */}
                             <tr>
                                 <td rowSpan={4} className="font-semibold text-slate-700 bg-slate-50">Current</td>
                                 <td className="font-medium text-slate-500">R</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.current.r} onChange={(e) => handlePowerParamChange("current", "r", e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.r} onChange={(e) => handlePowerParamChange("remarks", "r", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">Y</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.current.y} onChange={(e) => handlePowerParamChange("current", "y", e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.y} onChange={(e) => handlePowerParamChange("remarks", "y", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">B</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.current.b} onChange={(e) => handlePowerParamChange("current", "b", e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.b} onChange={(e) => handlePowerParamChange("remarks", "b", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">N</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.current.n} onChange={(e) => handlePowerParamChange("current", "n", e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.n} onChange={(e) => handlePowerParamChange("remarks", "n", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             {/* Freq & PF */}
                             <tr>
                                 <td className="font-semibold text-slate-700 bg-slate-50">Frequency</td>
                                 <td className="text-center text-slate-400">-</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.frequency} onChange={(e) => handlePowerParamChange("frequency", null, e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.frequency} onChange={(e) => handlePowerParamChange("remarks", "frequency", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-semibold text-slate-700 bg-slate-50">Power Factor</td>
                                 <td className="text-center text-slate-400">-</td>
                                 <td><input className="input-field py-2" value={formData.powerParameters.powerFactor} onChange={(e) => handlePowerParamChange("powerFactor", null, e.target.value)} /></td>
+                                <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.powerFactor} onChange={(e) => handlePowerParamChange("remarks", "powerFactor", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                         </tbody>
                     </table>

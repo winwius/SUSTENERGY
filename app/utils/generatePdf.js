@@ -220,22 +220,31 @@ export const generatePdf = async (data) => {
 
     // --- Header Rendering Function ---
     const drawHeader = (docObject) => {
-        const logoSize = 25; // Base square size
+        const logoSize = 25; // Base square height/width box
+        const headerY = 10;
+
         // Left Logo
         if (clientLogoImg) {
             const ratio = clientLogoImg.width / clientLogoImg.height;
             let w = logoSize, h = logoSize;
             if (ratio > 1) h = logoSize / ratio;
             else w = logoSize * ratio;
-            docObject.addImage(clientLogoImg, "PNG", margin, 10, w, h, undefined, 'FAST');
+
+            // Vertical centering within the logoSize height
+            const yPos = headerY + (logoSize - h) / 2;
+            docObject.addImage(clientLogoImg, "PNG", margin, yPos, w, h, undefined, 'FAST');
         }
+
         // Right Logo
         if (sustLogoImg) {
             const ratio = sustLogoImg.width / sustLogoImg.height;
             let w = logoSize, h = logoSize;
             if (ratio > 1) h = logoSize / ratio;
             else w = logoSize * ratio;
-            docObject.addImage(sustLogoImg, "PNG", pageWidth - margin - w, 10, w, h, undefined, 'FAST');
+
+            // Vertical centering within the logoSize height
+            const yPos = headerY + (logoSize - h) / 2;
+            docObject.addImage(sustLogoImg, "PNG", pageWidth - margin - w, yPos, w, h, undefined, 'FAST');
         }
     };
 
@@ -455,20 +464,21 @@ export const generatePdf = async (data) => {
     currentY += 7;
 
     const pp = powerParameters;
+    const remarks = pp.remarks || {};
     const ppBody = [
-        ["Line Voltage", "RY", pp.lineVoltage.ry || "", ""],
-        ["", "YB", pp.lineVoltage.yb || "", ""],
-        ["", "BR", pp.lineVoltage.br || "", ""],
-        ["Phase Voltage", "R-N", pp.phaseVoltage.rn || "", ""],
-        ["", "Y-N", pp.phaseVoltage.yn || "", ""],
-        ["", "B-N", pp.phaseVoltage.bn || "", ""],
-        ["Neutral to Earth", "N-E", pp.neutralEarth.ne || "", ""],
-        ["Current", "R", pp.current.r || "", ""],
-        ["", "Y", pp.current.y || "", ""],
-        ["", "B", pp.current.b || "", ""],
-        ["", "N", pp.current.n || "", ""],
-        ["Frequency", "", pp.frequency || "", ""],
-        ["Power Factor", "", pp.powerFactor || "", ""]
+        ["Line Voltage", "RY", pp.lineVoltage.ry || "", remarks.ry || ""],
+        ["", "YB", pp.lineVoltage.yb || "", remarks.yb || ""],
+        ["", "BR", pp.lineVoltage.br || "", remarks.br || ""],
+        ["Phase Voltage", "R-N", pp.phaseVoltage.rn || "", remarks.rn || ""],
+        ["", "Y-N", pp.phaseVoltage.yn || "", remarks.yn || ""],
+        ["", "B-N", pp.phaseVoltage.bn || "", remarks.bn || ""],
+        ["Neutral to Earth", "N-E", pp.neutralEarth.ne || "", remarks.ne || ""],
+        ["Current", "R", pp.current.r || "", remarks.r || ""],
+        ["", "Y", pp.current.y || "", remarks.y || ""],
+        ["", "B", pp.current.b || "", remarks.b || ""],
+        ["", "N", pp.current.n || "", remarks.n || ""],
+        ["Frequency", "", pp.frequency || "", remarks.frequency || ""],
+        ["Power Factor", "", pp.powerFactor || "", remarks.powerFactor || ""]
     ];
 
     autoTable(doc, {

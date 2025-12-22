@@ -22,45 +22,33 @@ import {
     BookmarkStart,
     BookmarkEnd,
     SimpleField,
-    TableLayoutType
+    TableLayoutType,
+    VerticalAlign
 } from "docx";
-
 /**
  * Custom download function for reliable file downloads
  */
 function downloadFile(blob, fileName) {
-    // If it's already a blob, use it directly. Otherwise wrap it.
-    const docxBlob = (blob instanceof Blob) ? blob : new Blob([blob], {
+    const docxBlob = new Blob([blob], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
 
-    // Support for IE/Edge Legacy
-    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-        window.navigator.msSaveOrOpenBlob(docxBlob, fileName);
-        return;
-    }
-
     const url = window.URL.createObjectURL(docxBlob);
     const a = document.createElement('a');
-
-    // Styling to ensure it's not visible
     a.style.display = 'none';
     a.href = url;
     a.download = fileName;
 
-    // Append to body is required for some browsers (like Firefox)
     document.body.appendChild(a);
-
-    // Trigger download
     a.click();
 
-    // Clean up
     window.setTimeout(function () {
-        document.body.removeChild(a);
+        if (document.body.contains(a)) {
+            document.body.removeChild(a);
+        }
         window.URL.revokeObjectURL(url);
-    }, 200);
+    }, 500);
 }
-
 /**
  * Convert image URL/DataURL to Uint8Array for DOCX embedding
  */
@@ -86,6 +74,19 @@ async function convertImageToBytes(url) {
         console.error('Error converting image:', error);
         return null;
     }
+}
+
+/**
+ * Helper to load image and get its dimensions
+ */
+function getImageDimensions(url) {
+    return new Promise((resolve) => {
+        if (!url) return resolve(null);
+        const img = new Image();
+        img.onload = () => resolve({ width: img.width, height: img.height });
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
 }
 
 /**
@@ -202,7 +203,35 @@ function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
  * @param {object} options - Default styling options
  */
 /**
- * Create paragraphs from HTML content using DOMParser for reliability
+ * Helper to convert color values to 6-digit HEX format required by docx
+ */
+function normalizeColor(color) {
+    if (!color) return undefined;
+
+    // If it's already a hex (with or without #)
+    if (color.startsWith('#')) {
+        return color.replace('#', '').substring(0, 6).toUpperCase();
+    }
+
+    // Handle rgb(r, g, b) or rgba(r, g, b, a)
+    const rgbMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+    if (rgbMatch) {
+        const r = parseInt(rgbMatch[1]).toString(16).padStart(2, '0');
+        const g = parseInt(rgbMatch[2]).toString(16).padStart(2, '0');
+        const b = parseInt(rgbMatch[3]).toString(16).padStart(2, '0');
+        return (r + g + b).toUpperCase();
+    }
+
+    // If it's already a 6-digit hex like string
+    if (/^[0-9A-Fa-f]{6}$/.test(color)) {
+        return color.toUpperCase();
+    }
+
+    return undefined;
+}
+
+/**
+ * Creates paragraphs from HTML content using DOMParser for reliability
  * @param {string} html - HTML content from rich text editor
  * @param {object} options - Default styling options
  */
@@ -251,7 +280,7 @@ function createTextParagraphs(html, options = {}) {
                 if (node.style.fontWeight === 'bold' || node.style.fontWeight > 500) styles.bold = true;
                 if (node.style.fontStyle === 'italic') styles.italic = true;
                 if (node.style.textDecoration.includes('underline')) styles.underline = true;
-                if (node.style.color) styles.color = node.style.color.replace('#', '');
+                if (node.style.color) styles.color = normalizeColor(node.style.color);
             }
 
             // Handle alignment (only if not already set by parent)
@@ -372,11 +401,15 @@ export const generateDocx = async (data) => {
     const documentChildren = [];
 
     // ========== DUAL LOGO HEADER (in document body for mobile compatibility) ==========
+    const LOGO_TARGET_SIZE = 80;
+
     // Load client logo
     let clientLogoBytes = null;
+    let clientLogoDims = null;
     if (logo) {
         try {
             clientLogoBytes = await convertImageToBytes(logo);
+            clientLogoDims = await getImageDimensions(logo);
         } catch (error) {
             console.error('Error loading client logo:', error);
         }
@@ -384,87 +417,76 @@ export const generateDocx = async (data) => {
 
     // Load Sustenergy logo
     let sustLogoBytes = null;
+    let sustLogoDims = null;
+    const sustLogoUrl = window.location.origin + "/sustenergy_logo.png";
     try {
-        const sustLogoUrl = window.location.origin + "/sustenergy_logo.png";
         sustLogoBytes = await convertImageToBytes(sustLogoUrl);
+        sustLogoDims = await getImageDimensions(sustLogoUrl);
     } catch (error) {
         console.error('Error loading Sustenergy logo:', error);
     }
 
-    // Build logo row for document body
-    const logoRowChildren = [];
+    // Calculate transformations
+    const getTransformation = (dims) => {
+        if (!dims) return { width: LOGO_TARGET_SIZE, height: LOGO_TARGET_SIZE };
+        const ratio = dims.width / dims.height;
+        let w = LOGO_TARGET_SIZE, h = LOGO_TARGET_SIZE;
+        if (ratio > 1) h = LOGO_TARGET_SIZE / ratio;
+        else w = LOGO_TARGET_SIZE * ratio;
+        return { width: Math.round(w), height: Math.round(h) };
+    };
 
+    const clientLogoTransform = getTransformation(clientLogoDims);
+    const sustLogoTransform = getTransformation(sustLogoDims);
+
+    // Build logo row for document body
     // Left cell with client logo
-    let leftLogoCell;
-    if (clientLogoBytes) {
-        leftLogoCell = new TableCell({
-            children: [
-                new Paragraph({
-                    children: [
-                        new ImageRun({
-                            data: clientLogoBytes,
-                            transformation: { width: 80, height: 80 }
-                        })
-                    ],
-                    alignment: AlignmentType.LEFT
-                })
-            ],
-            width: { size: 4680, type: WidthType.DXA },
-            borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.NONE },
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE }
-            }
-        });
-    } else {
-        leftLogoCell = new TableCell({
-            children: [new Paragraph({ text: "" })],
-            width: { size: 4680, type: WidthType.DXA },
-            borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.NONE },
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE }
-            }
-        });
-    }
+    let leftLogoCell = new TableCell({
+        children: clientLogoBytes ? [
+            new Paragraph({
+                children: [
+                    new ImageRun({
+                        data: clientLogoBytes,
+                        transformation: clientLogoTransform
+                    })
+                ],
+                alignment: AlignmentType.LEFT,
+                spacing: { before: 0, after: 0 }
+            })
+        ] : [new Paragraph({ text: "" })],
+        width: { size: 4680, type: WidthType.DXA },
+        verticalAlign: VerticalAlign.CENTER,
+        borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE }
+        }
+    });
 
     // Right cell with Sustenergy logo
-    let rightLogoCell;
-    if (sustLogoBytes) {
-        rightLogoCell = new TableCell({
-            children: [
-                new Paragraph({
-                    children: [
-                        new ImageRun({
-                            data: sustLogoBytes,
-                            transformation: { width: 80, height: 80 }
-                        })
-                    ],
-                    alignment: AlignmentType.RIGHT
-                })
-            ],
-            width: { size: 4680, type: WidthType.DXA },
-            borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.NONE },
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE }
-            }
-        });
-    } else {
-        rightLogoCell = new TableCell({
-            children: [new Paragraph({ text: "" })],
-            width: { size: 4680, type: WidthType.DXA },
-            borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.NONE },
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE }
-            }
-        });
-    }
+    let rightLogoCell = new TableCell({
+        children: sustLogoBytes ? [
+            new Paragraph({
+                children: [
+                    new ImageRun({
+                        data: sustLogoBytes,
+                        transformation: sustLogoTransform
+                    })
+                ],
+                alignment: AlignmentType.RIGHT,
+                spacing: { before: 0, after: 0 }
+            })
+        ] : [new Paragraph({ text: "" })],
+        width: { size: 4680, type: WidthType.DXA },
+        verticalAlign: VerticalAlign.CENTER,
+        borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE }
+        }
+    });
 
     // Add logo table to document body
     documentChildren.push(
@@ -745,7 +767,6 @@ export const generateDocx = async (data) => {
     if (majorHighlights && majorHighlights.length > 0 && majorHighlights.some(h => h.trim() !== "")) {
         documentChildren.push(
             new Paragraph({
-                pageBreakBefore: true,
                 children: [
                     new BookmarkStart("section_highlights"),
                     new TextRun({
@@ -985,22 +1006,23 @@ export const generateDocx = async (data) => {
         );
 
         const pp = powerParameters;
+        const remarks = pp.remarks || {};
         // Orange header (#F59E0B) to match title color
         const powerRows = [
             createDataRow(["Parameter", "Test Point", "Value", "Remarks"], true, "F59E0B"),
-            createDataRow(["Line Voltage", "RY", pp.lineVoltage?.ry || "", ""]),
-            createDataRow(["", "YB", pp.lineVoltage?.yb || "", ""]),
-            createDataRow(["", "BR", pp.lineVoltage?.br || "", ""]),
-            createDataRow(["Phase Voltage", "R-N", pp.phaseVoltage?.rn || "", ""]),
-            createDataRow(["", "Y-N", pp.phaseVoltage?.yn || "", ""]),
-            createDataRow(["", "B-N", pp.phaseVoltage?.bn || "", ""]),
-            createDataRow(["Neutral to Earth", "N-E", pp.neutralEarth?.ne || "", ""]),
-            createDataRow(["Current", "R", pp.current?.r || "", ""]),
-            createDataRow(["", "Y", pp.current?.y || "", ""]),
-            createDataRow(["", "B", pp.current?.b || "", ""]),
-            createDataRow(["", "N", pp.current?.n || "", ""]),
-            createDataRow(["Frequency", "", pp.frequency || "", ""]),
-            createDataRow(["Power Factor", "", pp.powerFactor || "", ""])
+            createDataRow(["Line Voltage", "RY", pp.lineVoltage?.ry || "", remarks.ry || ""]),
+            createDataRow(["", "YB", pp.lineVoltage?.yb || "", remarks.yb || ""]),
+            createDataRow(["", "BR", pp.lineVoltage?.br || "", remarks.br || ""]),
+            createDataRow(["Phase Voltage", "R-N", pp.phaseVoltage?.rn || "", remarks.rn || ""]),
+            createDataRow(["", "Y-N", pp.phaseVoltage?.yn || "", remarks.yn || ""]),
+            createDataRow(["", "B-N", pp.phaseVoltage?.bn || "", remarks.bn || ""]),
+            createDataRow(["Neutral to Earth", "N-E", pp.neutralEarth?.ne || "", remarks.ne || ""]),
+            createDataRow(["Current", "R", pp.current?.r || "", remarks.r || ""]),
+            createDataRow(["", "Y", pp.current?.y || "", remarks.y || ""]),
+            createDataRow(["", "B", pp.current?.b || "", remarks.b || ""]),
+            createDataRow(["", "N", pp.current?.n || "", remarks.n || ""]),
+            createDataRow(["Frequency", "", pp.frequency || "", remarks.frequency || ""]),
+            createDataRow(["Power Factor", "", pp.powerFactor || "", remarks.powerFactor || ""])
         ];
 
         documentChildren.push(
@@ -1089,7 +1111,6 @@ export const generateDocx = async (data) => {
     // ========== SIGNATORY SECTION ==========
     documentChildren.push(
         new Paragraph({
-            pageBreakBefore: true,
             children: [
                 new TextRun({
                     text: "For Sustenergy Foundation",
@@ -1255,12 +1276,13 @@ export const generateDocx = async (data) => {
     try {
         console.log("Packing DOCX to blob...");
         const blob = await Packer.toBlob(doc);
-        const safeBranchName = (branchName || "Draft").replace(/[^a-z0-9\s-_]/gi, '').trim().replace(/\s+/g, '_');
-        const fileName = `Audit_Report_${safeBranchName}.docx`;
+
+        const namePart = (branchName || "Audit").toString().trim().replace(/[^a-z0-9]/gi, '_') || "Report";
+        const fileName = `Audit_Report_${namePart}.docx`;
 
         console.log("Saving file:", fileName);
         downloadFile(blob, fileName);
-        console.log("File saved successfully");
+        console.log("File saved successfully:", fileName);
     } catch (error) {
         console.error("Error packing or downloading document:", error);
         alert("Error during file generation: " + error.message);
