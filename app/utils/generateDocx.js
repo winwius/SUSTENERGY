@@ -1168,7 +1168,57 @@ export const generateDocx = async (data) => {
         }),
         new Paragraph({
             children: [new TextRun({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", size: 20, color: "6B7280" })],
-            spacing: { after: 200 }
+            spacing: { after: 400 }
+        })
+    );
+
+    // ========== ORGANIZATION FOOTER ==========
+    // Reg. office line
+    documentChildren.push(
+        new Paragraph({
+            children: [
+                new TextRun({ text: "Reg. office: - Mathuvala, Kudamaloor.P.O, Kottayam -17, Kerala state, India Ph:- +91 481 6454636 , +91 9020093636", size: 18, color: "374151" })
+            ],
+            spacing: { after: 50 }
+        })
+    );
+
+    // Marketing Office line
+    documentChildren.push(
+        new Paragraph({
+            children: [
+                new TextRun({ text: "Marketing Office :- 277 N Pathinaruparayil Arcade, Chalukunnu, Kottayam.P.O, Kerala State 686 001", size: 18, color: "374151" })
+            ],
+            spacing: { after: 50 }
+        })
+    );
+
+    // Email and Website line
+    documentChildren.push(
+        new Paragraph({
+            children: [
+                new TextRun({ text: "Email:- contact@sustenergyfoundation.org   website:- ", size: 18, color: "374151" }),
+                new TextRun({ text: "www.sustenergyfoundation.org", size: 18, color: "0000FF" })
+            ],
+            spacing: { after: 100 }
+        })
+    );
+
+    // Countries line with yellow highlighting
+    documentChildren.push(
+        new Paragraph({
+            children: [
+                new TextRun({ text: "India", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Maldives", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Sri Lanka", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Nepal", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "UAE", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } })
+            ],
+            spacing: { before: 100, after: 200 }
         })
     );
 

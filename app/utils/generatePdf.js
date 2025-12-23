@@ -584,6 +584,75 @@ export const generatePdf = async (data) => {
     currentY += 5;
     doc.text("Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", margin, currentY);
 
+    // ========== ORGANIZATION FOOTER ==========
+    currentY += 20;
+
+    // Check if we need a new page for organization footer
+    if (currentY + 50 > pageHeight - 20) {
+        doc.addPage();
+        drawHeader(doc);
+        currentY = 40;
+    }
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(55, 65, 81); // Gray text color
+
+    // Reg. office line
+    doc.setFont("helvetica", "bold");
+    doc.text("Reg. office: - ", margin, currentY);
+    const regOfficeWidth = doc.getTextWidth("Reg. office: - ");
+    doc.setFont("helvetica", "normal");
+    doc.text("Mathuvala, Kudamaloor.P.O, Kottayam -17, Kerala state, India Ph:- +91 481 6454636 , +91 9020093636", margin + regOfficeWidth, currentY);
+    currentY += 5;
+
+    // Marketing Office line
+    doc.setFont("helvetica", "bold");
+    doc.text("Marketing Office :- ", margin, currentY);
+    const marketingWidth = doc.getTextWidth("Marketing Office :- ");
+    doc.setFont("helvetica", "normal");
+    doc.text("277 N Pathinaruparayil Arcade, Chalukunnu, Kottayam.P.O, Kerala State 686 001", margin + marketingWidth, currentY);
+    currentY += 5;
+
+    // Email and Website line
+    doc.setFont("helvetica", "normal");
+    doc.text("Email:- contact@sustenergyfoundation.org   ", margin, currentY);
+    const emailTextWidth = doc.getTextWidth("Email:- contact@sustenergyfoundation.org   ");
+    doc.text("website:- ", margin + emailTextWidth, currentY);
+    const websiteLabelWidth = doc.getTextWidth("website:- ");
+    doc.setTextColor(0, 0, 255); // Blue for URL
+    doc.text("www.sustenergyfoundation.org", margin + emailTextWidth + websiteLabelWidth, currentY);
+    currentY += 10;
+
+    // Countries line with yellow background
+    doc.setTextColor(0, 0, 0); // Black text
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+
+    const countries = ["India", "Maldives", "Sri Lanka", "Nepal", "UAE"];
+    const countrySpacing = 30;
+    let countryX = margin;
+
+    // Calculate total width for countries
+    let totalCountryWidth = 0;
+    countries.forEach((country, idx) => {
+        totalCountryWidth += doc.getTextWidth(country);
+        if (idx < countries.length - 1) totalCountryWidth += countrySpacing;
+    });
+
+    // Draw yellow background rectangle
+    doc.setFillColor(255, 255, 0); // Yellow
+    doc.rect(margin - 2, currentY - 5, totalCountryWidth + 4, 8, 'F');
+
+    // Draw country names
+    countries.forEach((country, idx) => {
+        doc.text(country, countryX, currentY);
+        countryX += doc.getTextWidth(country) + countrySpacing;
+    });
+
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+
     // --- Draw footers on all pages ---
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
