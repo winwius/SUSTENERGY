@@ -157,6 +157,47 @@ export default function Home() {
         logo: null,
     });
 
+    // Prevent accidental page refresh/navigation when form has data
+    useEffect(() => {
+        const hasFormData = () => {
+            // Check if any meaningful data has been entered
+            return (
+                formData.branchName ||
+                formData.branchCode ||
+                formData.refNo ||
+                formData.client ||
+                formData.snapshots.length > 0 ||
+                formData.connectedLoad.length > 0 ||
+                formData.generalObservations.some(obs => obs.trim() !== "") ||
+                formData.conclusions.some(conc => conc.trim() !== "") ||
+                formData.majorHighlights.some(h => h.trim() !== "") ||
+                formData.powerParameters.phaseVoltage.rn ||
+                formData.powerParameters.phaseVoltage.yn ||
+                formData.powerParameters.phaseVoltage.bn ||
+                formData.powerParameters.current.r ||
+                formData.powerParameters.current.y ||
+                formData.powerParameters.current.b ||
+                formData.powerParameters.frequency ||
+                formData.powerParameters.powerFactor
+            );
+        };
+
+        const handleBeforeUnload = (e) => {
+            if (hasFormData()) {
+                e.preventDefault();
+                // Modern browsers require returnValue to be set
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [formData]);
+
     const handleInputChange = (e, section, field, subField) => {
         const value = e.target.value;
         setFormData((prev) => {
