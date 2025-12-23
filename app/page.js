@@ -51,6 +51,75 @@ function CollapsibleCard({ title, icon: Icon, theme, children, headerContent, bo
     );
 }
 
+// Custom Unit Input that displays value with a unit suffix (e.g., " V" or " A") and keeps cursor before the suffix
+function UnitInput({ value, onChange, unit, className = "" }) {
+    const inputRef = useRef(null);
+    const displayValue = value ? `${value} ${unit}` : '';
+    const suffixPattern = new RegExp(` ${unit}$`, 'i');
+
+    const handleChange = (e) => {
+        // Extract only numeric value (remove unit suffix and non-numeric chars except decimal)
+        const rawValue = e.target.value.replace(suffixPattern, '').replace(/[^0-9.]/g, '');
+        onChange(rawValue);
+    };
+
+    const handleSelect = (e) => {
+        // Keep cursor before the unit suffix
+        if (value && inputRef.current) {
+            const maxPos = value.length;
+            const currentPos = e.target.selectionStart;
+            if (currentPos > maxPos) {
+                inputRef.current.setSelectionRange(maxPos, maxPos);
+            }
+        }
+    };
+
+    const handleClick = (e) => {
+        // On click, position cursor before unit suffix
+        if (value && inputRef.current) {
+            const maxPos = value.length;
+            setTimeout(() => {
+                if (inputRef.current && inputRef.current.selectionStart > maxPos) {
+                    inputRef.current.setSelectionRange(maxPos, maxPos);
+                }
+            }, 0);
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        // Prevent cursor from moving into unit suffix area
+        if (value && inputRef.current) {
+            const maxPos = value.length;
+            const currentPos = inputRef.current.selectionStart;
+
+            // If pressing right arrow or end and would go past the digits, prevent it
+            if ((e.key === 'ArrowRight' || e.key === 'End') && currentPos >= maxPos) {
+                e.preventDefault();
+            }
+        }
+    };
+
+    useEffect(() => {
+        // After value update, ensure cursor stays before unit suffix
+        if (value && inputRef.current && document.activeElement === inputRef.current) {
+            const maxPos = value.length;
+            inputRef.current.setSelectionRange(maxPos, maxPos);
+        }
+    }, [value]);
+
+    return (
+        <input
+            ref={inputRef}
+            className={`input-field py-2 ${className}`}
+            value={displayValue}
+            onChange={handleChange}
+            onSelect={handleSelect}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+        />
+    );
+}
+
 export default function Home() {
     const isProcessingRef = useRef(false);
     const [formData, setFormData] = useState({
@@ -69,7 +138,7 @@ export default function Home() {
             phaseVoltage: { rn: "", yn: "", bn: "" },
             neutralEarth: { ne: "" },
             current: { r: "", y: "", b: "", n: "" },
-            frequency: "50Hz",
+            frequency: "",
             powerFactor: "",
             remarks: {
                 ry: "", yb: "", br: "",
@@ -733,34 +802,34 @@ export default function Home() {
                                     Line Voltage (Auto Calculated)
                                 </td>
                                 <td className="font-medium text-slate-500">RY</td>
-                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.ry} readOnly placeholder="R-N * √3" /></td>
+                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.ry ? `${formData.powerParameters.lineVoltage.ry} V` : ''} readOnly placeholder="R-N * √3" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.ry} onChange={(e) => handlePowerParamChange("remarks", "ry", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">YB</td>
-                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.yb} readOnly placeholder="Y-N * √3" /></td>
+                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.yb ? `${formData.powerParameters.lineVoltage.yb} V` : ''} readOnly placeholder="Y-N * √3" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.yb} onChange={(e) => handlePowerParamChange("remarks", "yb", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">BR</td>
-                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.br} readOnly placeholder="B-N * √3" /></td>
+                                <td><input className="input-field py-2 bg-slate-50 text-slate-500" value={formData.powerParameters.lineVoltage.br ? `${formData.powerParameters.lineVoltage.br} V` : ''} readOnly placeholder="B-N * √3" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.br} onChange={(e) => handlePowerParamChange("remarks", "br", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             {/* Phase Voltage */}
                             <tr>
                                 <td rowSpan={3} className="font-semibold text-slate-700 bg-slate-50">Phase Voltage</td>
                                 <td className="font-medium text-slate-500">R-N</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.rn} onChange={(e) => handlePowerParamChange("phaseVoltage", "rn", e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.phaseVoltage.rn} onChange={(val) => handlePowerParamChange("phaseVoltage", "rn", val)} unit="V" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.rn} onChange={(e) => handlePowerParamChange("remarks", "rn", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">Y-N</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.yn} onChange={(e) => handlePowerParamChange("phaseVoltage", "yn", e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.phaseVoltage.yn} onChange={(val) => handlePowerParamChange("phaseVoltage", "yn", val)} unit="V" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.yn} onChange={(e) => handlePowerParamChange("remarks", "yn", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">B-N</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.phaseVoltage.bn} onChange={(e) => handlePowerParamChange("phaseVoltage", "bn", e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.phaseVoltage.bn} onChange={(val) => handlePowerParamChange("phaseVoltage", "bn", val)} unit="V" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.bn} onChange={(e) => handlePowerParamChange("remarks", "bn", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             {/* Neutral to Earth */}
@@ -774,29 +843,29 @@ export default function Home() {
                             <tr>
                                 <td rowSpan={4} className="font-semibold text-slate-700 bg-slate-50">Current</td>
                                 <td className="font-medium text-slate-500">R</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.current.r} onChange={(e) => handlePowerParamChange("current", "r", e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.current.r} onChange={(val) => handlePowerParamChange("current", "r", val)} unit="A" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.r} onChange={(e) => handlePowerParamChange("remarks", "r", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">Y</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.current.y} onChange={(e) => handlePowerParamChange("current", "y", e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.current.y} onChange={(val) => handlePowerParamChange("current", "y", val)} unit="A" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.y} onChange={(e) => handlePowerParamChange("remarks", "y", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">B</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.current.b} onChange={(e) => handlePowerParamChange("current", "b", e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.current.b} onChange={(val) => handlePowerParamChange("current", "b", val)} unit="A" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.b} onChange={(e) => handlePowerParamChange("remarks", "b", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>
                                 <td className="font-medium text-slate-500">N</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.current.n} onChange={(e) => handlePowerParamChange("current", "n", e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.current.n} onChange={(val) => handlePowerParamChange("current", "n", val)} unit="A" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.n} onChange={(e) => handlePowerParamChange("remarks", "n", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             {/* Freq & PF */}
                             <tr>
                                 <td className="font-semibold text-slate-700 bg-slate-50">Frequency</td>
                                 <td className="text-center text-slate-400">-</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.frequency} onChange={(e) => handlePowerParamChange("frequency", null, e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.frequency} onChange={(val) => handlePowerParamChange("frequency", null, val)} unit="Hz" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.frequency} onChange={(e) => handlePowerParamChange("remarks", "frequency", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             <tr>

@@ -466,18 +466,18 @@ export const generatePdf = async (data) => {
     const pp = powerParameters;
     const remarks = pp.remarks || {};
     const ppBody = [
-        ["Line Voltage", "RY", pp.lineVoltage.ry || "", remarks.ry || ""],
-        ["", "YB", pp.lineVoltage.yb || "", remarks.yb || ""],
-        ["", "BR", pp.lineVoltage.br || "", remarks.br || ""],
-        ["Phase Voltage", "R-N", pp.phaseVoltage.rn || "", remarks.rn || ""],
-        ["", "Y-N", pp.phaseVoltage.yn || "", remarks.yn || ""],
-        ["", "B-N", pp.phaseVoltage.bn || "", remarks.bn || ""],
+        ["Line Voltage", "RY", pp.lineVoltage.ry ? `${pp.lineVoltage.ry} V` : "", remarks.ry || ""],
+        ["", "YB", pp.lineVoltage.yb ? `${pp.lineVoltage.yb} V` : "", remarks.yb || ""],
+        ["", "BR", pp.lineVoltage.br ? `${pp.lineVoltage.br} V` : "", remarks.br || ""],
+        ["Phase Voltage", "R-N", pp.phaseVoltage.rn ? `${pp.phaseVoltage.rn} V` : "", remarks.rn || ""],
+        ["", "Y-N", pp.phaseVoltage.yn ? `${pp.phaseVoltage.yn} V` : "", remarks.yn || ""],
+        ["", "B-N", pp.phaseVoltage.bn ? `${pp.phaseVoltage.bn} V` : "", remarks.bn || ""],
         ["Neutral to Earth", "N-E", pp.neutralEarth.ne || "", remarks.ne || ""],
-        ["Current", "R", pp.current.r || "", remarks.r || ""],
-        ["", "Y", pp.current.y || "", remarks.y || ""],
-        ["", "B", pp.current.b || "", remarks.b || ""],
-        ["", "N", pp.current.n || "", remarks.n || ""],
-        ["Frequency", "", pp.frequency || "", remarks.frequency || ""],
+        ["Current", "R", pp.current.r ? `${pp.current.r} A` : "", remarks.r || ""],
+        ["", "Y", pp.current.y ? `${pp.current.y} A` : "", remarks.y || ""],
+        ["", "B", pp.current.b ? `${pp.current.b} A` : "", remarks.b || ""],
+        ["", "N", pp.current.n ? `${pp.current.n} A` : "", remarks.n || ""],
+        ["Frequency", "", pp.frequency ? `${pp.frequency} Hz` : "", remarks.frequency || ""],
         ["Power Factor", "", pp.powerFactor || "", remarks.powerFactor || ""]
     ];
 

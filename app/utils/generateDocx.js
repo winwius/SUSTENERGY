@@ -1010,18 +1010,18 @@ export const generateDocx = async (data) => {
         // Orange header (#F59E0B) to match title color
         const powerRows = [
             createDataRow(["Parameter", "Test Point", "Value", "Remarks"], true, "F59E0B"),
-            createDataRow(["Line Voltage", "RY", pp.lineVoltage?.ry || "", remarks.ry || ""]),
-            createDataRow(["", "YB", pp.lineVoltage?.yb || "", remarks.yb || ""]),
-            createDataRow(["", "BR", pp.lineVoltage?.br || "", remarks.br || ""]),
-            createDataRow(["Phase Voltage", "R-N", pp.phaseVoltage?.rn || "", remarks.rn || ""]),
-            createDataRow(["", "Y-N", pp.phaseVoltage?.yn || "", remarks.yn || ""]),
-            createDataRow(["", "B-N", pp.phaseVoltage?.bn || "", remarks.bn || ""]),
+            createDataRow(["Line Voltage", "RY", pp.lineVoltage?.ry ? `${pp.lineVoltage.ry} V` : "", remarks.ry || ""]),
+            createDataRow(["", "YB", pp.lineVoltage?.yb ? `${pp.lineVoltage.yb} V` : "", remarks.yb || ""]),
+            createDataRow(["", "BR", pp.lineVoltage?.br ? `${pp.lineVoltage.br} V` : "", remarks.br || ""]),
+            createDataRow(["Phase Voltage", "R-N", pp.phaseVoltage?.rn ? `${pp.phaseVoltage.rn} V` : "", remarks.rn || ""]),
+            createDataRow(["", "Y-N", pp.phaseVoltage?.yn ? `${pp.phaseVoltage.yn} V` : "", remarks.yn || ""]),
+            createDataRow(["", "B-N", pp.phaseVoltage?.bn ? `${pp.phaseVoltage.bn} V` : "", remarks.bn || ""]),
             createDataRow(["Neutral to Earth", "N-E", pp.neutralEarth?.ne || "", remarks.ne || ""]),
-            createDataRow(["Current", "R", pp.current?.r || "", remarks.r || ""]),
-            createDataRow(["", "Y", pp.current?.y || "", remarks.y || ""]),
-            createDataRow(["", "B", pp.current?.b || "", remarks.b || ""]),
-            createDataRow(["", "N", pp.current?.n || "", remarks.n || ""]),
-            createDataRow(["Frequency", "", pp.frequency || "", remarks.frequency || ""]),
+            createDataRow(["Current", "R", pp.current?.r ? `${pp.current.r} A` : "", remarks.r || ""]),
+            createDataRow(["", "Y", pp.current?.y ? `${pp.current.y} A` : "", remarks.y || ""]),
+            createDataRow(["", "B", pp.current?.b ? `${pp.current.b} A` : "", remarks.b || ""]),
+            createDataRow(["", "N", pp.current?.n ? `${pp.current.n} A` : "", remarks.n || ""]),
+            createDataRow(["Frequency", "", pp.frequency ? `${pp.frequency} Hz` : "", remarks.frequency || ""]),
             createDataRow(["Power Factor", "", pp.powerFactor || "", remarks.powerFactor || ""])
         ];
 
