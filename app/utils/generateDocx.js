@@ -1208,15 +1208,15 @@ export const generateDocx = async (data) => {
     documentChildren.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "India", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "Maldives", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "Sri Lanka", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "Nepal", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "UAE", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } })
+                new TextRun({ text: "India", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "                    ", size: 32, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Maldives", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "                    ", size: 32, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Sri Lanka", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "                    ", size: 32, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Nepal", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "                    ", size: 32, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "UAE", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } })
             ],
             spacing: { before: 100, after: 200 }
         })
