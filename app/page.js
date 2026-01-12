@@ -500,6 +500,22 @@ export default function Home() {
     };
 
     const handlePowerParamChange = (field, subField, value) => {
+        // 1. Determine allowed decimal places
+        let maxDecimals = 1; // Default for Phase Voltage, Current, Neutral Earth
+        if (field === "frequency" || field === "powerFactor") {
+            maxDecimals = 2;
+        }
+
+        // 2. Validate Input (Allow empty or matching defined precision)
+        // Regex Explanation: Starts with digits, optionally followed by a dot and up to maxDecimals digits
+        const regex = new RegExp(`^\\d*(\\.\\d{0,${maxDecimals}})?$`);
+
+        // If value serves as a partial input (like "1."), it's valid.
+        // If it exceeds precision (like "1.23" for 1 decimal), we block it.
+        if (value && !regex.test(value)) {
+            return; // Reject change
+        }
+
         setFormData((prev) => {
             const newPowerParams = { ...prev.powerParameters };
 
@@ -515,8 +531,8 @@ export default function Home() {
                 const lineSubField = subField === "rn" ? "ry" : (subField === "yn" ? "yb" : "br");
 
                 if (!isNaN(phaseVal) && value.trim() !== "") {
-                    // Calculation rounded to 3 decimal places
-                    const lineVal = (phaseVal * Math.sqrt(3)).toFixed(3);
+                    // Calculation rounded to 1 decimal place as per "other values" rule
+                    const lineVal = (phaseVal * Math.sqrt(3)).toFixed(1);
                     newPowerParams.lineVoltage = { ...newPowerParams.lineVoltage, [lineSubField]: lineVal };
                 } else {
                     // Clear the value if the input is empty to let the placeholder reappear

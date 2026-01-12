@@ -102,8 +102,8 @@ function createTableRow(label, value) {
                             new TextRun({
                                 text: label,
                                 bold: true,
-                                size: 24,
-                                color: "4B5563"
+                                size: 22,
+                                color: "000000"
                             })
                         ]
                     })
@@ -128,8 +128,8 @@ function createTableRow(label, value) {
                         children: [
                             new TextRun({
                                 text: value || "-",
-                                size: 24,
-                                color: "1F2937"
+                                size: 22,
+                                color: "000000"
                             })
                         ]
                     })
@@ -167,7 +167,7 @@ function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
                                 text: text !== null && text !== undefined ? String(text) : "-",
                                 bold: isHeader,
                                 size: 22,
-                                color: isHeader ? "FFFFFF" : "4B5563"
+                                color: "000000"
                             })
                         ],
                         alignment: index === 0 ? AlignmentType.LEFT : AlignmentType.CENTER
@@ -181,10 +181,10 @@ function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
                     right: 100
                 },
                 borders: {
-                    top: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                    bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                    left: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                    right: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                    top: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                    bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                    left: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                    right: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
                 }
             })
         )
@@ -239,8 +239,8 @@ function createTextParagraphs(html, options = {}) {
     if (!html) return [];
 
     const {
-        size = 24,
-        color = "374151",
+        size = 22,
+        color = "000000",
         spacing = { after: 120 }
     } = options;
 
@@ -535,7 +535,7 @@ export const generateDocx = async (data) => {
                     text: "ELECTRICAL SAFETY AUDIT REPORT",
                     bold: true,
                     size: 52,
-                    color: "2563EB"
+                    color: "000000"
                 })
             ],
             alignment: AlignmentType.CENTER,
@@ -552,7 +552,7 @@ export const generateDocx = async (data) => {
                         text: `BRANCH: ${branchName}`,
                         bold: true,
                         size: 32,
-                        color: "374151"
+                        color: "000000"
                     })
                 ],
                 alignment: AlignmentType.CENTER,
@@ -568,7 +568,7 @@ export const generateDocx = async (data) => {
                     new TextRun({
                         text: `BRANCH CODE: ${branchCode}`,
                         size: 28,
-                        color: "6B7280"
+                        color: "000000"
                     })
                 ],
                 alignment: AlignmentType.CENTER,
@@ -613,7 +613,7 @@ export const generateDocx = async (data) => {
                     text: "Table of Contents",
                     bold: true,
                     size: 36,
-                    color: "1F2937"
+                    color: "000000"
                 })
             ],
             alignment: AlignmentType.CENTER,
@@ -637,7 +637,7 @@ export const generateDocx = async (data) => {
             new TableCell({
                 children: [
                     new Paragraph({
-                        children: [new TextRun({ text: "Sl. No", bold: true, size: 24, color: "FFFFFF" })],
+                        children: [new TextRun({ text: "Sl. No", bold: true, size: 22, color: "000000" })],
                         alignment: AlignmentType.CENTER
                     })
                 ],
@@ -648,7 +648,7 @@ export const generateDocx = async (data) => {
             new TableCell({
                 children: [
                     new Paragraph({
-                        children: [new TextRun({ text: "Description", bold: true, size: 24, color: "FFFFFF" })]
+                        children: [new TextRun({ text: "Description", bold: true, size: 22, color: "000000" })]
                     })
                 ],
                 shading: { fill: "2DD4BF" },
@@ -658,7 +658,7 @@ export const generateDocx = async (data) => {
             new TableCell({
                 children: [
                     new Paragraph({
-                        children: [new TextRun({ text: "Page No", bold: true, size: 24, color: "FFFFFF" })],
+                        children: [new TextRun({ text: "Page No", bold: true, size: 22, color: "000000" })],
                         alignment: AlignmentType.CENTER
                     })
                 ],
@@ -676,26 +676,26 @@ export const generateDocx = async (data) => {
                 new TableCell({
                     children: [
                         new Paragraph({
-                            children: [new TextRun({ text: item.sl, size: 24, color: "374151" })],
+                            children: [new TextRun({ text: item.sl, size: 22, color: "000000" })],
                             alignment: AlignmentType.CENTER
                         })
                     ],
                     width: { size: 1400, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 100, right: 100 },
                     borders: {
-                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                        bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
                     }
                 }),
                 new TableCell({
                     children: [
                         new Paragraph({
-                            children: [new TextRun({ text: item.desc, size: 24, color: "374151" })]
+                            children: [new TextRun({ text: item.desc, size: 22, color: "000000" })]
                         })
                     ],
                     width: { size: 6100, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 150, right: 100 },
                     borders: {
-                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                        bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
                     }
                 }),
                 new TableCell({
@@ -708,7 +708,7 @@ export const generateDocx = async (data) => {
                     width: { size: 1860, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 100, right: 100 },
                     borders: {
-                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                        bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
                     }
                 })
             ]
@@ -721,12 +721,12 @@ export const generateDocx = async (data) => {
             width: { size: 9360, type: WidthType.DXA },
             columnWidths: [1400, 6100, 1860],
             borders: {
-                top: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                left: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                right: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                top: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                left: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                right: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
             },
             rows: [tocHeaderRow, ...tocDataRows]
         })
@@ -743,7 +743,7 @@ export const generateDocx = async (data) => {
                         text: "1.0 Audit - General Observations",
                         bold: true,
                         size: 32,
-                        color: "10B981"
+                        color: "000000"
                     }),
                     new BookmarkEnd("section_observations")
                 ],
@@ -754,8 +754,8 @@ export const generateDocx = async (data) => {
         generalObservations.forEach((observation) => {
             if (observation && observation.trim() !== "") {
                 const paragraphs = createTextParagraphs(observation, {
-                    size: 24,
-                    color: "374151",
+                    size: 22,
+                    color: "000000",
                     spacing: { after: 200 }
                 });
                 documentChildren.push(...paragraphs);
@@ -773,7 +773,7 @@ export const generateDocx = async (data) => {
                         text: "2.0 Major Highlights",
                         bold: true,
                         size: 32,
-                        color: "F59E0B"
+                        color: "000000"
                     }),
                     new BookmarkEnd("section_highlights")
                 ],
@@ -785,8 +785,8 @@ export const generateDocx = async (data) => {
             if (highlight.trim() !== "") {
                 // Preserve line breaks within each highlight
                 const highlightParagraphs = createTextParagraphs(highlight, {
-                    size: 24,
-                    color: "374151",
+                    size: 22,
+                    color: "000000",
                     spacing: { after: 150 }
                 });
                 documentChildren.push(...highlightParagraphs);
@@ -804,7 +804,7 @@ export const generateDocx = async (data) => {
                         text: "3.0 Snapshots of Electrical Installation",
                         bold: true,
                         size: 32,
-                        color: "8B5CF6"
+                        color: "000000"
                     }),
                     new BookmarkEnd("section_snapshots")
                 ],
@@ -818,7 +818,7 @@ export const generateDocx = async (data) => {
                 new TableCell({
                     children: [
                         new Paragraph({
-                            children: [new TextRun({ text: "Sl. No", bold: true, size: 24, color: "FFFFFF" })],
+                            children: [new TextRun({ text: "Sl. No", bold: true, size: 22, color: "000000" })],
                             alignment: AlignmentType.CENTER
                         })
                     ],
@@ -829,7 +829,7 @@ export const generateDocx = async (data) => {
                 new TableCell({
                     children: [
                         new Paragraph({
-                            children: [new TextRun({ text: "Image", bold: true, size: 24, color: "FFFFFF" })]
+                            children: [new TextRun({ text: "Image", bold: true, size: 22, color: "000000" })]
                         })
                     ],
                     shading: { fill: "8B5CF6" },
@@ -839,7 +839,7 @@ export const generateDocx = async (data) => {
                 new TableCell({
                     children: [
                         new Paragraph({
-                            children: [new TextRun({ text: "Description", bold: true, size: 24, color: "FFFFFF" })]
+                            children: [new TextRun({ text: "Description", bold: true, size: 22, color: "000000" })]
                         })
                     ],
                     shading: { fill: "8B5CF6" },
@@ -866,26 +866,26 @@ export const generateDocx = async (data) => {
                             new TableCell({
                                 children: [
                                     new Paragraph({
-                                        children: [new TextRun({ text: slNo.toString(), size: 24, color: "374151" })],
+                                        children: [new TextRun({ text: slNo.toString(), size: 22, color: "000000" })],
                                         alignment: AlignmentType.CENTER
                                     })
                                 ],
                                 margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
                             }),
                             new TableCell({
                                 children: [
                                     new Paragraph({
-                                        children: [new TextRun({ text: "No Image", size: 22, color: "9CA3AF", italics: true })]
+                                        children: [new TextRun({ text: "No Image", size: 22, color: "000000", italics: true })]
                                     })
                                 ],
                                 margins: { top: 100, bottom: 100, left: 150, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
                             }),
                             new TableCell({
-                                children: description ? createTextParagraphs(description, { size: 22, color: "374151", spacing: { after: 50 } }) : [new Paragraph({ text: "" })],
+                                children: description ? createTextParagraphs(description, { size: 22, color: "000000", spacing: { after: 50 } }) : [new Paragraph({ text: "" })],
                                 margins: { top: 100, bottom: 100, left: 150, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
                             })
                         ]
                     })
@@ -896,7 +896,7 @@ export const generateDocx = async (data) => {
                 for (let i = 0; i < groupImages.length; i++) {
                     const imgUrl = groupImages[i];
                     let imageContent = new Paragraph({
-                        children: [new TextRun({ text: "Error loading image", size: 20, color: "EF4444", italics: true })]
+                        children: [new TextRun({ text: "Error loading image", size: 22, color: "000000", italics: true })]
                     });
 
                     try {
@@ -927,13 +927,13 @@ export const generateDocx = async (data) => {
                             new TableCell({
                                 children: [
                                     new Paragraph({
-                                        children: [new TextRun({ text: slNo.toString(), size: 24, color: "374151" })],
+                                        children: [new TextRun({ text: slNo.toString(), size: 22, color: "000000" })],
                                         alignment: AlignmentType.CENTER
                                     })
                                 ],
                                 rowSpan: groupImages.length, // Merge vertically
                                 margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
                             })
                         );
                     }
@@ -943,7 +943,7 @@ export const generateDocx = async (data) => {
                         new TableCell({
                             children: [imageContent],
                             margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                            borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                            borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
                         })
                     );
 
@@ -952,11 +952,11 @@ export const generateDocx = async (data) => {
                         rowChildren.push(
                             new TableCell({
                                 children: description
-                                    ? createTextParagraphs(description, { size: 22, color: "374151", spacing: { after: 50 } })
+                                    ? createTextParagraphs(description, { size: 22, color: "000000", spacing: { after: 50 } })
                                     : [new Paragraph({ text: "" })],
                                 rowSpan: groupImages.length, // Merge vertically
                                 margins: { top: 100, bottom: 100, left: 150, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
                             })
                         );
                     }
@@ -974,12 +974,12 @@ export const generateDocx = async (data) => {
                 width: { size: 9360, type: WidthType.DXA },
                 columnWidths: [936, 3744, 4680],
                 borders: {
-                    top: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                    bottom: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                    left: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                    right: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                    insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" },
-                    insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "E5E7EB" }
+                    top: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                    bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                    left: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                    right: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                    insideHorizontal: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
+                    insideVertical: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
                 },
                 rows: [snapshotHeaderRow, ...snapshotDataRows]
             })
@@ -997,7 +997,7 @@ export const generateDocx = async (data) => {
                         text: "4.0 Power Parameters",
                         bold: true,
                         size: 32,
-                        color: "F59E0B"
+                        color: "000000"
                     }),
                     new BookmarkEnd("section_power")
                 ],
@@ -1046,7 +1046,7 @@ export const generateDocx = async (data) => {
                         text: "5.0 Connected Load Detail",
                         bold: true,
                         size: 32,
-                        color: "EF4444"
+                        color: "000000"
                     }),
                     new BookmarkEnd("section_load")
                 ],
@@ -1087,7 +1087,7 @@ export const generateDocx = async (data) => {
                         text: "6.0 Conclusions",
                         bold: true,
                         size: 32,
-                        color: "6366F1"
+                        color: "000000"
                     }),
                     new BookmarkEnd("section_conclusions")
                 ],
@@ -1099,8 +1099,8 @@ export const generateDocx = async (data) => {
             if (conclusion.trim() !== "") {
                 // Preserve line breaks within each conclusion
                 const conclusionParagraphs = createTextParagraphs(conclusion, {
-                    size: 24,
-                    color: "374151",
+                    size: 22,
+                    color: "000000",
                     spacing: { after: 150 }
                 });
                 documentChildren.push(...conclusionParagraphs);
@@ -1115,8 +1115,8 @@ export const generateDocx = async (data) => {
                 new TextRun({
                     text: "For Sustenergy Foundation",
                     bold: true,
-                    size: 24,
-                    color: "1F2937"
+                    size: 22,
+                    color: "000000"
                 })
             ],
             spacing: { before: 600, after: 200 }
@@ -1151,23 +1151,23 @@ export const generateDocx = async (data) => {
     // Signatory details
     documentChildren.push(
         new Paragraph({
-            children: [new TextRun({ text: "Jayakumar.R", bold: true, size: 24 })],
+            children: [new TextRun({ text: "Jayakumar.R", bold: true, size: 22, color: "000000" })],
             spacing: { after: 50 }
         }),
         new Paragraph({
-            children: [new TextRun({ text: "Principal Consultant.", size: 22, color: "4B5563" })],
+            children: [new TextRun({ text: "Principal Consultant.", size: 22, color: "000000" })],
             spacing: { after: 50 }
         }),
         new Paragraph({
-            children: [new TextRun({ text: "Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India", size: 20, color: "6B7280" })],
+            children: [new TextRun({ text: "Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India", size: 22, color: "000000" })],
             spacing: { after: 50 }
         }),
         new Paragraph({
-            children: [new TextRun({ text: "Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State", size: 20, color: "6B7280" })],
+            children: [new TextRun({ text: "Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State", size: 22, color: "000000" })],
             spacing: { after: 50 }
         }),
         new Paragraph({
-            children: [new TextRun({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", size: 20, color: "6B7280" })],
+            children: [new TextRun({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", size: 22, color: "000000" })],
             spacing: { after: 400 }
         })
     );
@@ -1177,7 +1177,7 @@ export const generateDocx = async (data) => {
     documentChildren.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "Reg. office: - Mathuvala, Kudamaloor.P.O, Kottayam -17, Kerala state, India Ph:- +91 481 6454636 , +91 9020093636", size: 18, color: "374151" })
+                new TextRun({ text: "Reg. office: - Mathuvala, Kudamaloor.P.O, Kottayam -17, Kerala state, India Ph:- +91 481 6454636 , +91 9020093636", size: 22, color: "000000" })
             ],
             spacing: { after: 50 }
         })
@@ -1187,7 +1187,7 @@ export const generateDocx = async (data) => {
     documentChildren.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "Marketing Office :- 277 N Pathinaruparayil Arcade, Chalukunnu, Kottayam.P.O, Kerala State 686 001", size: 18, color: "374151" })
+                new TextRun({ text: "Marketing Office :- 277 N Pathinaruparayil Arcade, Chalukunnu, Kottayam.P.O, Kerala State 686 001", size: 22, color: "000000" })
             ],
             spacing: { after: 50 }
         })
@@ -1197,8 +1197,8 @@ export const generateDocx = async (data) => {
     documentChildren.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "Email:- contact@sustenergyfoundation.org   website:- ", size: 18, color: "374151" }),
-                new TextRun({ text: "www.sustenergyfoundation.org", size: 18, color: "0000FF" })
+                new TextRun({ text: "Email:- contact@sustenergyfoundation.org   website:- ", size: 22, color: "000000" }),
+                new TextRun({ text: "www.sustenergyfoundation.org", size: 22, color: "000000" })
             ],
             spacing: { after: 100 }
         })
@@ -1233,28 +1233,28 @@ export const generateDocx = async (data) => {
             children: [
                 new TextRun({
                     text: "Electrical Safety Audit Report",
-                    size: 20,
-                    color: "666666"
+                    size: 22,
+                    color: "000000"
                 }),
                 new TextRun({
                     text: "    |    Page ",
-                    size: 20,
-                    color: "666666"
+                    size: 22,
+                    color: "000000"
                 }),
                 new TextRun({
                     children: [PageNumber.CURRENT],
-                    size: 20,
-                    color: "666666"
+                    size: 22,
+                    color: "000000"
                 }),
                 new TextRun({
                     text: " of ",
-                    size: 20,
-                    color: "666666"
+                    size: 22,
+                    color: "000000"
                 }),
                 new TextRun({
                     children: [PageNumber.TOTAL_PAGES],
-                    size: 20,
-                    color: "666666"
+                    size: 22,
+                    color: "000000"
                 })
             ],
             alignment: AlignmentType.CENTER
