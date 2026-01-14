@@ -418,7 +418,7 @@ export const generateDocx = async (data) => {
     // Load Sustenergy logo
     let sustLogoBytes = null;
     let sustLogoDims = null;
-    const sustLogoUrl = window.location.origin + "/sustenergy_logo.png";
+    const sustLogoUrl = window.location.origin + "/ENERGYAUDIT_BANKS/sustenergy_logo.png";
     try {
         sustLogoBytes = await convertImageToBytes(sustLogoUrl);
         sustLogoDims = await getImageDimensions(sustLogoUrl);

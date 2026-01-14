@@ -500,20 +500,23 @@ export default function Home() {
     };
 
     const handlePowerParamChange = (field, subField, value) => {
-        // 1. Determine allowed decimal places
-        let maxDecimals = 1; // Default for Phase Voltage, Current, Neutral Earth
-        if (field === "frequency" || field === "powerFactor") {
-            maxDecimals = 2;
-        }
+        // Skip validation for remarks field - allow any characters
+        if (field !== "remarks") {
+            // 1. Determine allowed decimal places
+            let maxDecimals = 1; // Default for Phase Voltage, Current, Neutral Earth
+            if (field === "frequency" || field === "powerFactor") {
+                maxDecimals = 2;
+            }
 
-        // 2. Validate Input (Allow empty or matching defined precision)
-        // Regex Explanation: Starts with digits, optionally followed by a dot and up to maxDecimals digits
-        const regex = new RegExp(`^\\d*(\\.\\d{0,${maxDecimals}})?$`);
+            // 2. Validate Input (Allow empty or matching defined precision)
+            // Regex Explanation: Starts with digits, optionally followed by a dot and up to maxDecimals digits
+            const regex = new RegExp(`^\\d*(\\.\\d{0,${maxDecimals}})?$`);
 
-        // If value serves as a partial input (like "1."), it's valid.
-        // If it exceeds precision (like "1.23" for 1 decimal), we block it.
-        if (value && !regex.test(value)) {
-            return; // Reject change
+            // If value serves as a partial input (like "1."), it's valid.
+            // If it exceeds precision (like "1.23" for 1 decimal), we block it.
+            if (value && !regex.test(value)) {
+                return; // Reject change
+            }
         }
 
         setFormData((prev) => {
@@ -893,7 +896,7 @@ export default function Home() {
                             <tr>
                                 <td className="font-semibold text-slate-700 bg-slate-50">Neutral to Earth</td>
                                 <td className="font-medium text-slate-500">N-E</td>
-                                <td><input className="input-field py-2" value={formData.powerParameters.neutralEarth.ne} onChange={(e) => handlePowerParamChange("neutralEarth", "ne", e.target.value)} /></td>
+                                <td><UnitInput value={formData.powerParameters.neutralEarth.ne} onChange={(val) => handlePowerParamChange("neutralEarth", "ne", val)} unit="V" /></td>
                                 <td className="pr-10"><textarea rows={1} className="input-field py-2" style={{ height: '42px', resize: 'none' }} value={formData.powerParameters.remarks.ne} onChange={(e) => handlePowerParamChange("remarks", "ne", e.target.value)} placeholder="Remarks" /></td>
                             </tr>
                             {/* Current */}
@@ -1116,7 +1119,7 @@ export default function Home() {
                                 >
                                     {(formData.useDefaultSignature || formData.signature) ? (
                                         <img
-                                            src={formData.useDefaultSignature ? "/default_signature.jpg" : formData.signature}
+                                            src={formData.useDefaultSignature ? "/ENERGYAUDIT_BANKS/default_signature.jpg" : formData.signature}
                                             alt="Signature"
                                             className="w-full h-full object-contain"
                                             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -1183,7 +1186,7 @@ export default function Home() {
                         <button
                             onClick={() => generateDocx({
                                 ...formData,
-                                signature: formData.useDefaultSignature ? window.location.origin + "/default_signature.jpg" : formData.signature
+                                signature: formData.useDefaultSignature ? window.location.origin + "/ENERGYAUDIT_BANKS/default_signature.jpg" : formData.signature
                             })}
                             className="btn-primary flex items-center gap-3"
                         >
@@ -1193,7 +1196,7 @@ export default function Home() {
                         <button
                             onClick={() => generatePdf({
                                 ...formData,
-                                signature: formData.useDefaultSignature ? window.location.origin + "/default_signature.jpg" : formData.signature
+                                signature: formData.useDefaultSignature ? window.location.origin + "/ENERGYAUDIT_BANKS/default_signature.jpg" : formData.signature
                             })}
                             className="btn-pdf flex items-center gap-3"
                         >

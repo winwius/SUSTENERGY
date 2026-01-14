@@ -215,7 +215,7 @@ export const generatePdf = async (data) => {
 
     // --- Asset Loading ---
     const clientLogoImg = await loadImage(logo);
-    const sustLogoImg = await loadImage(window.location.origin + "/sustenergy_logo.png");
+    const sustLogoImg = await loadImage(window.location.origin + "/ENERGYAUDIT_BANKS/sustenergy_logo.png");
     const sigImg = await loadImage(signature);
 
     // --- Header Rendering Function ---
