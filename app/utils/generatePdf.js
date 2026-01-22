@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { SUSTENERGY_LOGO } from "./assets";
 
 export const generatePdf = async (data) => {
     const {
@@ -215,7 +216,7 @@ export const generatePdf = async (data) => {
 
     // --- Asset Loading ---
     const clientLogoImg = await loadImage(logo);
-    const sustLogoImg = await loadImage(window.location.origin + "/ENERGYAUDIT_BANKS/sustenergy_logo.png");
+    const sustLogoImg = await loadImage(SUSTENERGY_LOGO);
     const sigImg = await loadImage(signature);
 
     // --- Header Rendering Function ---
@@ -297,7 +298,7 @@ export const generatePdf = async (data) => {
             [{ content: "Client", styles: { fontStyle: 'bold' } }, client || "-"],
         ],
         theme: 'grid',
-        styles: { fontSize: 10, cellPadding: 5 },
+        styles: { fontSize: 10, cellPadding: 5, lineWidth: 0.1, lineColor: [200, 200, 200] },
         columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 'auto' } }
     });
 
@@ -322,7 +323,7 @@ export const generatePdf = async (data) => {
         head: [["Sl. No", "Description", "Page No"]],
         body: tocData,
         theme: 'grid',
-        styles: { fontSize: 10 },
+        styles: { fontSize: 10, lineWidth: 0.1, lineColor: [200, 200, 200] },
         headStyles: {
             fillColor: [45, 212, 191], // Teal color #2DD4BF
             textColor: [255, 255, 255],
@@ -423,6 +424,7 @@ export const generatePdf = async (data) => {
         head: [["Sl. No", "Image", "Description"]],
         body: snapshotBody,
         theme: 'grid',
+        styles: { lineWidth: 0.1, lineColor: [200, 200, 200] },
         headStyles: {
             fillColor: [139, 92, 246], // Purple #8B5CF6 to match title
             textColor: [255, 255, 255],
@@ -466,17 +468,31 @@ export const generatePdf = async (data) => {
     const pp = powerParameters;
     const remarks = pp.remarks || {};
     const ppBody = [
-        ["Line Voltage", "RY", pp.lineVoltage.ry ? `${pp.lineVoltage.ry} V` : "", remarks.ry || ""],
-        ["", "YB", pp.lineVoltage.yb ? `${pp.lineVoltage.yb} V` : "", remarks.yb || ""],
-        ["", "BR", pp.lineVoltage.br ? `${pp.lineVoltage.br} V` : "", remarks.br || ""],
-        ["Phase Voltage", "R-N", pp.phaseVoltage.rn ? `${pp.phaseVoltage.rn} V` : "", remarks.rn || ""],
-        ["", "Y-N", pp.phaseVoltage.yn ? `${pp.phaseVoltage.yn} V` : "", remarks.yn || ""],
-        ["", "B-N", pp.phaseVoltage.bn ? `${pp.phaseVoltage.bn} V` : "", remarks.bn || ""],
+        // Line Voltage
+        [{ content: "Line Voltage", rowSpan: 3, styles: { valign: 'middle' } }, "RY", pp.lineVoltage.ry ? `${pp.lineVoltage.ry} V` : "", remarks.ry || ""],
+        ["YB", pp.lineVoltage.yb ? `${pp.lineVoltage.yb} V` : "", remarks.yb || ""],
+        ["BR", pp.lineVoltage.br ? `${pp.lineVoltage.br} V` : "", remarks.br || ""],
+
+        // Phase Voltage
+        [{ content: "Phase Voltage", rowSpan: 3, styles: { valign: 'middle' } }, "R-N", pp.phaseVoltage.rn ? `${pp.phaseVoltage.rn} V` : "", remarks.rn || ""],
+        ["Y-N", pp.phaseVoltage.yn ? `${pp.phaseVoltage.yn} V` : "", remarks.yn || ""],
+        ["B-N", pp.phaseVoltage.bn ? `${pp.phaseVoltage.bn} V` : "", remarks.bn || ""],
+
+        // Neutral
         ["Neutral to Earth", "N-E", pp.neutralEarth.ne || "", remarks.ne || ""],
-        ["Current", "R", pp.current.r ? `${pp.current.r} A` : "", remarks.r || ""],
-        ["", "Y", pp.current.y ? `${pp.current.y} A` : "", remarks.y || ""],
-        ["", "B", pp.current.b ? `${pp.current.b} A` : "", remarks.b || ""],
-        ["", "N", pp.current.n ? `${pp.current.n} A` : "", remarks.n || ""],
+
+        // Current
+        [
+            { content: "Current", rowSpan: 4, styles: { valign: 'middle' } },
+            "R",
+            pp.current.r ? `${pp.current.r} A` : "",
+            { content: [remarks.r, remarks.y, remarks.b, remarks.n].filter(Boolean).join('\n'), rowSpan: 4, styles: { valign: 'middle', halign: 'center' } }
+        ],
+        ["Y", pp.current.y ? `${pp.current.y} A` : ""],
+        ["B", pp.current.b ? `${pp.current.b} A` : ""],
+        ["N", pp.current.n ? `${pp.current.n} A` : ""],
+
+        // Others
         ["Frequency", "", pp.frequency ? `${pp.frequency} Hz` : "", remarks.frequency || ""],
         ["Power Factor", "", pp.powerFactor || "", remarks.powerFactor || ""]
     ];
@@ -486,6 +502,7 @@ export const generatePdf = async (data) => {
         head: [["Parameter", "Test Point", "Value", "Remarks"]],
         body: ppBody,
         theme: 'grid',
+        styles: { lineWidth: 0.1, lineColor: [200, 200, 200] },
         headStyles: {
             fillColor: [245, 158, 11], // Orange #F59E0B to match title
             textColor: [255, 255, 255],
@@ -516,10 +533,18 @@ export const generatePdf = async (data) => {
         head: [["Sl. No", "Type of Load", "Power (W)", "Qty", "Sub Total (KW)"]],
         body: loadBody,
         theme: 'grid',
+        styles: { lineWidth: 0.1, lineColor: [200, 200, 200] },
         headStyles: {
             fillColor: [239, 68, 68], // Red #EF4444 to match title
             textColor: [255, 255, 255],
             fontStyle: 'bold'
+        },
+        columnStyles: {
+            0: { halign: 'center' },
+            1: { halign: 'left' },
+            2: { halign: 'center' },
+            3: { halign: 'center' },
+            4: { halign: 'center' }
         },
         didDrawPage: (data) => { drawHeader(doc); },
         margin: { top: 35 }
@@ -578,11 +603,18 @@ export const generatePdf = async (data) => {
     doc.setFont("helvetica", "normal");
     doc.text("Principal Consultant.", margin, currentY);
     currentY += 5;
+
+    // Certificates in Blue, Size 10
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 255); // Blue
     doc.text("Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India", margin, currentY);
     currentY += 5;
     doc.text("Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State", margin, currentY);
     currentY += 5;
     doc.text("Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", margin, currentY);
+
+    // Reset to black for subsequent text (Organization Footer starts next)
+    doc.setTextColor(0, 0, 0);
 
     // ========== ORGANIZATION FOOTER ==========
     currentY += 20;
@@ -596,7 +628,7 @@ export const generatePdf = async (data) => {
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(55, 65, 81); // Gray text color
+    doc.setTextColor(0, 0, 0); // Black text color
 
     // Reg. office line
     doc.setFont("helvetica", "bold");

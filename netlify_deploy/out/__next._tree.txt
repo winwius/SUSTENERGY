@@ -1,2 +1,0 @@
-:HL["/_next/static/chunks/c5e3767e4b8bc1c7.css","style"]
-0:{"buildId":"gYcfyi2IJ9_H52doXMP-G","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":true},"staleTime":300}

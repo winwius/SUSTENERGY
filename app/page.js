@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Download, Camera, FileText, Zap, Activity, CheckCircle, PenTool, Upload, X, ChevronDown, ChevronUp, Images, FileType } from "lucide-react";
 import { generateDocx } from "./utils/generateDocx";
 import { generatePdf } from "./utils/generatePdf";
+import { DEFAULT_SIGNATURE } from "./utils/assets";
 import dynamic from "next/dynamic";
 
 const RichTextEditor = dynamic(() => import("./components/RichTextEditor"), {
@@ -1119,7 +1120,7 @@ export default function Home() {
                                 >
                                     {(formData.useDefaultSignature || formData.signature) ? (
                                         <img
-                                            src={formData.useDefaultSignature ? "/ENERGYAUDIT_BANKS/default_signature.jpg" : formData.signature}
+                                            src={formData.useDefaultSignature ? DEFAULT_SIGNATURE : formData.signature}
                                             alt="Signature"
                                             className="w-full h-full object-contain"
                                             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -1186,7 +1187,7 @@ export default function Home() {
                         <button
                             onClick={() => generateDocx({
                                 ...formData,
-                                signature: formData.useDefaultSignature ? window.location.origin + "/ENERGYAUDIT_BANKS/default_signature.jpg" : formData.signature
+                                signature: formData.useDefaultSignature ? DEFAULT_SIGNATURE : formData.signature
                             })}
                             className="btn-primary flex items-center gap-3"
                         >
@@ -1196,7 +1197,7 @@ export default function Home() {
                         <button
                             onClick={() => generatePdf({
                                 ...formData,
-                                signature: formData.useDefaultSignature ? window.location.origin + "/ENERGYAUDIT_BANKS/default_signature.jpg" : formData.signature
+                                signature: formData.useDefaultSignature ? DEFAULT_SIGNATURE : formData.signature
                             })}
                             className="btn-pdf flex items-center gap-3"
                         >

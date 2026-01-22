@@ -23,8 +23,10 @@ import {
     BookmarkEnd,
     SimpleField,
     TableLayoutType,
-    VerticalAlign
+    VerticalAlign,
+    VerticalMergeType
 } from "docx";
+import { SUSTENERGY_LOGO } from "./assets";
 /**
  * Custom download function for reliable file downloads
  */
@@ -156,10 +158,17 @@ function createTableRow(label, value) {
  * @param {boolean} isHeader - Whether this is a header row
  * @param {string} headerColor - Hex color for header background (default: teal #2DD4BF)
  */
-function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
+function createDataRow(cells, isHeader = false, headerColor = "2DD4BF", customAlignments = null) {
     return new TableRow({
-        children: cells.map((text, index) =>
-            new TableCell({
+        children: cells.map((text, index) => {
+            let alignment = AlignmentType.CENTER;
+            if (customAlignments && customAlignments[index]) {
+                alignment = customAlignments[index];
+            } else {
+                alignment = index === 0 ? AlignmentType.LEFT : AlignmentType.CENTER;
+            }
+
+            return new TableCell({
                 children: [
                     new Paragraph({
                         children: [
@@ -170,7 +179,7 @@ function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
                                 color: "000000"
                             })
                         ],
-                        alignment: index === 0 ? AlignmentType.LEFT : AlignmentType.CENTER
+                        alignment: alignment
                     })
                 ],
                 shading: isHeader ? { fill: headerColor } : undefined,
@@ -181,13 +190,13 @@ function createDataRow(cells, isHeader = false, headerColor = "2DD4BF") {
                     right: 100
                 },
                 borders: {
-                    top: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                    bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                    left: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                    right: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
+                    top: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                    bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                    left: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                    right: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" }
                 }
-            })
-        )
+            });
+        })
     });
 }
 
@@ -418,7 +427,7 @@ export const generateDocx = async (data) => {
     // Load Sustenergy logo
     let sustLogoBytes = null;
     let sustLogoDims = null;
-    const sustLogoUrl = window.location.origin + "/ENERGYAUDIT_BANKS/sustenergy_logo.png";
+    const sustLogoUrl = SUSTENERGY_LOGO;
     try {
         sustLogoBytes = await convertImageToBytes(sustLogoUrl);
         sustLogoDims = await getImageDimensions(sustLogoUrl);
@@ -683,7 +692,7 @@ export const generateDocx = async (data) => {
                     width: { size: 1400, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 100, right: 100 },
                     borders: {
-                        bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" }
                     }
                 }),
                 new TableCell({
@@ -695,7 +704,7 @@ export const generateDocx = async (data) => {
                     width: { size: 6100, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 150, right: 100 },
                     borders: {
-                        bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" }
                     }
                 }),
                 new TableCell({
@@ -708,7 +717,7 @@ export const generateDocx = async (data) => {
                     width: { size: 1860, type: WidthType.DXA },
                     margins: { top: 80, bottom: 80, left: 100, right: 100 },
                     borders: {
-                        bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" }
                     }
                 })
             ]
@@ -721,12 +730,12 @@ export const generateDocx = async (data) => {
             width: { size: 9360, type: WidthType.DXA },
             columnWidths: [1400, 6100, 1860],
             borders: {
-                top: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                left: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                right: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                insideVertical: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
+                top: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                left: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                right: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" }
             },
             rows: [tocHeaderRow, ...tocDataRows]
         })
@@ -871,7 +880,7 @@ export const generateDocx = async (data) => {
                                     })
                                 ],
                                 margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" } }
                             }),
                             new TableCell({
                                 children: [
@@ -880,12 +889,12 @@ export const generateDocx = async (data) => {
                                     })
                                 ],
                                 margins: { top: 100, bottom: 100, left: 150, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" } }
                             }),
                             new TableCell({
                                 children: description ? createTextParagraphs(description, { size: 22, color: "000000", spacing: { after: 50 } }) : [new Paragraph({ text: "" })],
                                 margins: { top: 100, bottom: 100, left: 150, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" } }
                             })
                         ]
                     })
@@ -933,7 +942,7 @@ export const generateDocx = async (data) => {
                                 ],
                                 rowSpan: groupImages.length, // Merge vertically
                                 margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" } }
                             })
                         );
                     }
@@ -943,7 +952,7 @@ export const generateDocx = async (data) => {
                         new TableCell({
                             children: [imageContent],
                             margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                            borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
+                            borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" } }
                         })
                     );
 
@@ -956,7 +965,7 @@ export const generateDocx = async (data) => {
                                     : [new Paragraph({ text: "" })],
                                 rowSpan: groupImages.length, // Merge vertically
                                 margins: { top: 100, bottom: 100, left: 150, right: 100 },
-                                borders: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" } }
+                                borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" } }
                             })
                         );
                     }
@@ -974,12 +983,12 @@ export const generateDocx = async (data) => {
                 width: { size: 9360, type: WidthType.DXA },
                 columnWidths: [936, 3744, 4680],
                 borders: {
-                    top: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                    bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                    left: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                    right: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                    insideHorizontal: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
-                    insideVertical: { style: BorderStyle.SINGLE, size: 12, color: "000000" }
+                    top: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                    bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                    left: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                    right: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                    insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+                    insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" }
                 },
                 rows: [snapshotHeaderRow, ...snapshotDataRows]
             })
@@ -1007,22 +1016,148 @@ export const generateDocx = async (data) => {
 
         const pp = powerParameters;
         const remarks = pp.remarks || {};
-        // Orange header (#F59E0B) to match title color
+
+        // Define border style
+        const cellBorders = {
+            top: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+            left: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+            right: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" }
+        };
+
+        const createCell = (text, vMerge = undefined, fill = undefined, isBold = false) => {
+            return new TableCell({
+                children: [new Paragraph({
+                    children: [new TextRun({ text: text || "", size: 22, color: "000000", bold: isBold })],
+                    alignment: AlignmentType.CENTER
+                })],
+                verticalMerge: vMerge,
+                shading: fill ? { fill: fill } : undefined,
+                borders: cellBorders,
+                margins: { top: 80, bottom: 80, left: 100, right: 100 }
+            });
+        };
+
         const powerRows = [
-            createDataRow(["Parameter", "Test Point", "Value", "Remarks"], true, "F59E0B"),
-            createDataRow(["Line Voltage", "RY", pp.lineVoltage?.ry ? `${pp.lineVoltage.ry} V` : "", remarks.ry || ""]),
-            createDataRow(["", "YB", pp.lineVoltage?.yb ? `${pp.lineVoltage.yb} V` : "", remarks.yb || ""]),
-            createDataRow(["", "BR", pp.lineVoltage?.br ? `${pp.lineVoltage.br} V` : "", remarks.br || ""]),
-            createDataRow(["Phase Voltage", "R-N", pp.phaseVoltage?.rn ? `${pp.phaseVoltage.rn} V` : "", remarks.rn || ""]),
-            createDataRow(["", "Y-N", pp.phaseVoltage?.yn ? `${pp.phaseVoltage.yn} V` : "", remarks.yn || ""]),
-            createDataRow(["", "B-N", pp.phaseVoltage?.bn ? `${pp.phaseVoltage.bn} V` : "", remarks.bn || ""]),
-            createDataRow(["Neutral to Earth", "N-E", pp.neutralEarth?.ne || "", remarks.ne || ""]),
-            createDataRow(["Current", "R", pp.current?.r ? `${pp.current.r} A` : "", remarks.r || ""]),
-            createDataRow(["", "Y", pp.current?.y ? `${pp.current.y} A` : "", remarks.y || ""]),
-            createDataRow(["", "B", pp.current?.b ? `${pp.current.b} A` : "", remarks.b || ""]),
-            createDataRow(["", "N", pp.current?.n ? `${pp.current.n} A` : "", remarks.n || ""]),
-            createDataRow(["Frequency", "", pp.frequency ? `${pp.frequency} Hz` : "", remarks.frequency || ""]),
-            createDataRow(["Power Factor", "", pp.powerFactor || "", remarks.powerFactor || ""])
+            // Header
+            new TableRow({
+                children: [
+                    createCell("Parameter", undefined, "F59E0B", true),
+                    createCell("Test Point", undefined, "F59E0B", true),
+                    createCell("Value", undefined, "F59E0B", true),
+                    createCell("Remarks", undefined, "F59E0B", true)
+                ]
+            }),
+            // Line Voltage
+            new TableRow({
+                children: [
+                    createCell("Line Voltage", VerticalMergeType.RESTART),
+                    createCell("RY"),
+                    createCell(pp.lineVoltage?.ry ? `${pp.lineVoltage.ry} V` : ""),
+                    createCell(remarks.ry)
+                ]
+            }),
+            new TableRow({
+                children: [
+                    createCell("", VerticalMergeType.CONTINUE),
+                    createCell("YB"),
+                    createCell(pp.lineVoltage?.yb ? `${pp.lineVoltage.yb} V` : ""),
+                    createCell(remarks.yb)
+                ]
+            }),
+            new TableRow({
+                children: [
+                    createCell("", VerticalMergeType.CONTINUE),
+                    createCell("BR"),
+                    createCell(pp.lineVoltage?.br ? `${pp.lineVoltage.br} V` : ""),
+                    createCell(remarks.br)
+                ]
+            }),
+            // Phase Voltage
+            new TableRow({
+                children: [
+                    createCell("Phase Voltage", VerticalMergeType.RESTART),
+                    createCell("R-N"),
+                    createCell(pp.phaseVoltage?.rn ? `${pp.phaseVoltage.rn} V` : ""),
+                    createCell(remarks.rn)
+                ]
+            }),
+            new TableRow({
+                children: [
+                    createCell("", VerticalMergeType.CONTINUE),
+                    createCell("Y-N"),
+                    createCell(pp.phaseVoltage?.yn ? `${pp.phaseVoltage.yn} V` : ""),
+                    createCell(remarks.yn)
+                ]
+            }),
+            new TableRow({
+                children: [
+                    createCell("", VerticalMergeType.CONTINUE),
+                    createCell("B-N"),
+                    createCell(pp.phaseVoltage?.bn ? `${pp.phaseVoltage.bn} V` : ""),
+                    createCell(remarks.bn)
+                ]
+            }),
+            // Neutral
+            new TableRow({
+                children: [
+                    createCell("Neutral to Earth"),
+                    createCell("N-E"),
+                    createCell(pp.neutralEarth?.ne || ""),
+                    createCell(remarks.ne)
+                ]
+            }),
+            // Current
+            new TableRow({
+                children: [
+                    createCell("Current", VerticalMergeType.RESTART),
+                    createCell("R"),
+                    createCell(pp.current?.r ? `${pp.current.r} A` : ""),
+                    createCell([remarks.r, remarks.y, remarks.b, remarks.n].filter(Boolean).join('\n'), VerticalMergeType.RESTART)
+                ]
+            }),
+            new TableRow({
+                children: [
+                    createCell("", VerticalMergeType.CONTINUE),
+                    createCell("Y"),
+                    createCell(pp.current?.y ? `${pp.current.y} A` : ""),
+                    createCell("", VerticalMergeType.CONTINUE)
+                ]
+            }),
+            new TableRow({
+                children: [
+                    createCell("", VerticalMergeType.CONTINUE),
+                    createCell("B"),
+                    createCell(pp.current?.b ? `${pp.current.b} A` : ""),
+                    createCell("", VerticalMergeType.CONTINUE)
+                ]
+            }),
+            new TableRow({
+                children: [
+                    createCell("", VerticalMergeType.CONTINUE),
+                    createCell("N"),
+                    createCell(pp.current?.n ? `${pp.current.n} A` : ""),
+                    createCell("", VerticalMergeType.CONTINUE)
+                ]
+            }),
+            // Frequency
+            new TableRow({
+                children: [
+                    createCell("Frequency"),
+                    createCell(""),
+                    createCell(pp.frequency ? `${pp.frequency} Hz` : ""),
+                    createCell(remarks.frequency)
+                ]
+            }),
+            // Power Factor
+            new TableRow({
+                children: [
+                    createCell("Power Factor"),
+                    createCell(""),
+                    createCell(pp.powerFactor || ""),
+                    createCell(remarks.powerFactor)
+                ]
+            }),
         ];
 
         documentChildren.push(
@@ -1054,17 +1189,26 @@ export const generateDocx = async (data) => {
             })
         );
 
+        const loadAlignments = [
+            AlignmentType.CENTER, // Sl No
+            AlignmentType.LEFT,   // Type of Load
+            AlignmentType.CENTER, // Power
+            AlignmentType.CENTER, // Qty
+            AlignmentType.CENTER  // Sub Total
+        ];
+
         // Red header (#EF4444) to match title color
         const loadRows = [
-            createDataRow(["Sl. No", "Type of Load", "Power (W)", "Qty", "Sub Total (KW)"], true, "EF4444"),
+            createDataRow(["Sl. No", "Type of Load", "Power (W)", "Qty", "Sub Total (KW)"], true, "EF4444", loadAlignments),
             ...connectedLoad.map((load, index) =>
-                createDataRow([index + 1, load.type, load.power, load.qty, load.subTotal])
+                createDataRow([index + 1, load.type, load.power, load.qty, load.subTotal], false, undefined, loadAlignments)
             )
         ];
 
         // Calculate total
         const totalLoad = connectedLoad.reduce((acc, curr) => acc + (parseFloat(curr.subTotal) || 0), 0);
-        loadRows.push(createDataRow(["", "Connected load in KW", "", "", totalLoad.toFixed(2)], true, "EF4444"));
+        // Align total row same as others
+        loadRows.push(createDataRow(["", "Connected load in KW", "", "", totalLoad.toFixed(2)], true, "EF4444", loadAlignments));
 
         documentChildren.push(
             new Table({
@@ -1159,27 +1303,32 @@ export const generateDocx = async (data) => {
             spacing: { after: 50 }
         }),
         new Paragraph({
-            children: [new TextRun({ text: "Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India", size: 22, color: "000000" })],
+            children: [new TextRun({ text: "Certified Energy Manager – EM 0514 – Bureau of Energy efficiency, India", size: 20, color: "0000FF" })],
             spacing: { after: 50 }
         }),
         new Paragraph({
-            children: [new TextRun({ text: "Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State", size: 22, color: "000000" })],
+            children: [new TextRun({ text: "Supervisor Grade A – SA 1387- All LT/MV/HT Electrical Installation, KSELB, Kerala State", size: 20, color: "0000FF" })],
             spacing: { after: 50 }
         }),
         new Paragraph({
-            children: [new TextRun({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", size: 22, color: "000000" })],
+            children: [new TextRun({ text: "Certified Infrared Thermographer Level 1 – No 2017IN08N002 - Infrared Training Center, Sweden", size: 20, color: "0000FF" })],
             spacing: { after: 400 }
         })
     );
 
     // ========== ORGANIZATION FOOTER ==========
+    const footerFontSize = 18; // 9pt
+    const footerColor = "000000"; // Black
+
     // Reg. office line
     documentChildren.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "Reg. office: - Mathuvala, Kudamaloor.P.O, Kottayam -17, Kerala state, India Ph:- +91 481 6454636 , +91 9020093636", size: 22, color: "000000" })
+                new TextRun({ text: "Reg. office: - ", bold: true, size: footerFontSize, color: footerColor }),
+                new TextRun({ text: "Mathuvala, Kudamaloor.P.O, Kottayam -17, Kerala state, India Ph:- +91 481 6454636 , +91 9020093636", size: footerFontSize, color: footerColor })
             ],
-            spacing: { after: 50 }
+            spacing: { after: 50 },
+            alignment: AlignmentType.LEFT
         })
     );
 
@@ -1187,9 +1336,11 @@ export const generateDocx = async (data) => {
     documentChildren.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "Marketing Office :- 277 N Pathinaruparayil Arcade, Chalukunnu, Kottayam.P.O, Kerala State 686 001", size: 22, color: "000000" })
+                new TextRun({ text: "Marketing Office :- ", bold: true, size: footerFontSize, color: footerColor }),
+                new TextRun({ text: "277 N Pathinaruparayil Arcade, Chalukunnu, Kottayam.P.O, Kerala State 686 001", size: footerFontSize, color: footerColor })
             ],
-            spacing: { after: 50 }
+            spacing: { after: 50 },
+            alignment: AlignmentType.LEFT
         })
     );
 
@@ -1197,28 +1348,33 @@ export const generateDocx = async (data) => {
     documentChildren.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "Email:- contact@sustenergyfoundation.org   website:- ", size: 22, color: "000000" }),
-                new TextRun({ text: "www.sustenergyfoundation.org", size: 22, color: "000000" })
+                new TextRun({ text: "Email:- ", bold: true, size: footerFontSize, color: footerColor }),
+                new TextRun({ text: "contact@sustenergyfoundation.org", size: footerFontSize, color: "0000FF" }), // Blue
+                new TextRun({ text: "   ", size: footerFontSize }), // Spacer
+                new TextRun({ text: "website:- ", bold: true, size: footerFontSize, color: footerColor }),
+                new TextRun({ text: "www.sustenergyfoundation.org", size: footerFontSize, color: "0000FF" }) // Blue
             ],
-            spacing: { after: 100 }
+            spacing: { after: 100 },
+            alignment: AlignmentType.LEFT
         })
     );
 
-    // Countries line with yellow highlighting - all on one line with equal spacing
+    // Countries line with yellow highlighting
     documentChildren.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "India", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "          ", size: 32, shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "Maldives", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "          ", size: 32, shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "Sri Lanka", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "          ", size: 32, shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "Nepal", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "          ", size: 32, shading: { fill: "FFFF00" } }),
-                new TextRun({ text: "UAE", bold: true, size: 32, color: "000000", shading: { fill: "FFFF00" } })
+                new TextRun({ text: "India", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Maldives", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Sri Lanka", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "Nepal", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "          ", size: 24, shading: { fill: "FFFF00" } }),
+                new TextRun({ text: "UAE", bold: true, size: 24, color: "000000", shading: { fill: "FFFF00" } })
             ],
-            spacing: { before: 100, after: 200 }
+            spacing: { before: 100, after: 200 },
+            alignment: AlignmentType.LEFT
         })
     );
 
